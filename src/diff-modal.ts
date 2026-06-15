@@ -1,0 +1,172 @@
+import { App, Modal, Setting } from 'obsidian';
+import type { PendingFileFix } from './types';
+
+export class DiffModal extends Modal {
+	private readonly original: string;
+	private readonly fixed: string;
+	private readonly logs: string[];
+	private readonly onApply: () => Promise<void>;
+
+	constructor(
+		app: App,
+		original: string,
+		fixed: string,
+		logs: string[],
+		onApply: () => Promise<void>,
+	) {
+		super(app);
+		this.original = original;
+		this.fixed = fixed;
+		this.logs = logs;
+		this.onApply = onApply;
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass('mermaid-fixer-modal');
+		contentEl.createEl('h2', { text: 'Mermaid fixer - preview changes' });
+		renderLogSummary(contentEl, this.logs);
+		renderDiff(contentEl, this.original, this.fixed);
+		renderFooter(contentEl, 'Apply', async () => {
+			await this.onApply();
+			this.close();
+		}, () => this.close());
+	}
+
+	onClose() {
+		this.contentEl.empty();
+	}
+}
+
+export class VaultSummaryModal extends Modal {
+	private readonly fixes: PendingFileFix[];
+	private readonly showDiffs: boolean;
+	private readonly onApplyAll: () => Promise<void>;
+
+	constructor(
+		app: App,
+		fixes: PendingFileFix[],
+		showDiffs: boolean,
+		onApplyAll: () => Promise<void>,
+	) {
+		super(app);
+		this.fixes = fixes;
+		this.showDiffs = showDiffs;
+		this.onApplyAll = onApplyAll;
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass('mermaid-fixer-modal');
+		contentEl.createEl('h2', { text: 'Mermaid fixer - vault scan results' });
+
+		const issueCount = this.fixes.reduce(
+			(total, fix) => total + countFixes(fix.logs),
+			0,
+		);
+		contentEl.createEl('p', {
+			text: `${this.fixes.length} file(s) will be changed, ${issueCount} issue(s) total.`,
+		});
+
+		const listEl = contentEl.createDiv({ cls: 'mermaid-fixer-file-list' });
+		for (const fix of this.fixes) {
+			if (this.showDiffs) {
+				const details = listEl.createEl('details', {
+					cls: 'mermaid-fixer-file',
+				});
+				details.createEl('summary', {
+					text: `${fix.file.path} - ${fix.logs.join(', ')}`,
+				});
+				renderDiff(details, fix.original, fix.fixed);
+			} else {
+				listEl.createDiv({
+					cls: 'mermaid-fixer-file',
+					text: `${fix.file.path} - ${fix.logs.join(', ')}`,
+				});
+			}
+		}
+
+		renderFooter(contentEl, 'Apply all', async () => {
+			await this.onApplyAll();
+			this.close();
+		}, () => this.close());
+	}
+
+	onClose() {
+		this.contentEl.empty();
+	}
+}
+
+export function createUnifiedDiff(original: string, fixed: string): string[] {
+	const originalLines = original.split(/\r?\n/);
+	const fixedLines = fixed.split(/\r?\n/);
+	const lines: string[] = ['--- original', '+++ fixed'];
+	const maxLength = Math.max(originalLines.length, fixedLines.length);
+
+	for (let index = 0; index < maxLength; index += 1) {
+		const before = originalLines[index];
+		const after = fixedLines[index];
+		if (before === after) {
+			lines.push(` ${before ?? ''}`);
+			continue;
+		}
+		if (before !== undefined) {
+			lines.push(`-${before}`);
+		}
+		if (after !== undefined) {
+			lines.push(`+${after}`);
+		}
+	}
+
+	return lines;
+}
+
+function renderDiff(containerEl: HTMLElement, original: string, fixed: string) {
+	const pre = containerEl.createEl('pre', { cls: 'mermaid-fixer-diff' });
+	for (const line of createUnifiedDiff(original, fixed)) {
+		const cls = line.startsWith('+')
+			? 'added'
+			: line.startsWith('-')
+				? 'removed'
+				: 'context';
+		pre.createEl('div', { cls, text: line });
+	}
+}
+
+function renderLogSummary(containerEl: HTMLElement, logs: string[]) {
+	if (logs.length === 0) {
+		return;
+	}
+	containerEl.createEl('p', { text: `Fixes: ${logs.join(', ')}` });
+}
+
+function renderFooter(
+	containerEl: HTMLElement,
+	applyText: string,
+	onApply: () => Promise<void>,
+	onCancel: () => void,
+) {
+	new Setting(containerEl)
+		.addButton((button) =>
+			button.setButtonText('Cancel').onClick(() => {
+				onCancel();
+			}),
+		)
+		.addButton((button) =>
+			button
+				.setButtonText(applyText)
+				.setCta()
+				.onClick(async () => {
+					await onApply();
+				}),
+		);
+}
+
+function countFixes(logs: string[]): number {
+	return logs.reduce((total, log) => {
+		const match = / x(\d+)$/.exec(log);
+		return total + (match ? Number(match[1]) : 1);
+	}, 0);
+}

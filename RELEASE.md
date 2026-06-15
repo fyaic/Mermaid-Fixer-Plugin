@@ -1,0 +1,75 @@
+# Release checklist
+
+Use this checklist for the initial Obsidian Community release.
+
+## Community listing
+
+Mermaid Fixer is intended to be listed as **Free**:
+
+- No paid features.
+- No license checks or subscriptions.
+- No developer-operated service.
+- No donations or funding link.
+- No third-party paid API integrations.
+
+Suggested listing metadata:
+
+```json
+{
+  "id": "mermaid-fixer",
+  "name": "Mermaid Fixer",
+  "author": "Fuyo AIC",
+  "description": "Auto-fix common Mermaid syntax errors in your notes.",
+  "repo": "fyaic/Mermaid-Fixer-Plugin"
+}
+```
+
+## Required repository files
+
+- `README.md`
+- `LICENSE`
+- `PRIVACY.md`
+- `manifest.json`
+- `versions.json`
+- `main.js`
+- `styles.css`
+
+## Required GitHub release assets
+
+For each release, upload these binary attachments:
+
+- `main.js`
+- `manifest.json`
+- `styles.css`
+
+The GitHub release tag must match `manifest.json` version exactly, for example `1.0.0`.
+
+## Pre-release verification
+
+```bash
+npm ci
+npm test
+npm run lint
+npm run build
+node --check main.js
+```
+
+Also run a manual Obsidian smoke test in a fresh vault:
+
+- Install the plugin folder.
+- Enable the plugin.
+- Open the settings tab.
+- Confirm both commands appear in the command palette.
+- Run `Fix Mermaid in current file` on a note with a broken Mermaid block.
+- Run `Fix Mermaid in whole vault` on a small test vault.
+- Confirm diff preview and cancel/apply flows work.
+
+## Submission
+
+1. Push the source to a public GitHub repository.
+2. Commit the accurate `manifest.json` to the default branch.
+3. Create a GitHub release whose tag matches the manifest version.
+4. Upload `main.js`, `manifest.json`, and `styles.css` to the release.
+5. Sign in at `community.obsidian.md`.
+6. Link the GitHub account.
+7. Submit the plugin URL from the Community dashboard.

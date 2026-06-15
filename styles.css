@@ -1,0 +1,41 @@
+.mermaid-fixer-modal {
+	max-width: 900px;
+}
+
+.mermaid-fixer-diff {
+	max-height: 60vh;
+	overflow: auto;
+	padding: 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-secondary);
+	white-space: pre-wrap;
+}
+
+.mermaid-fixer-diff .added {
+	background-color: rgba(46, 160, 67, 0.18);
+	color: var(--text-normal);
+}
+
+.mermaid-fixer-diff .removed {
+	background-color: rgba(248, 81, 73, 0.18);
+	color: var(--text-normal);
+}
+
+.mermaid-fixer-diff .context {
+	color: var(--text-muted);
+}
+
+.mermaid-fixer-file-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-height: 65vh;
+	overflow: auto;
+}
+
+.mermaid-fixer-file {
+	padding: 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+}
