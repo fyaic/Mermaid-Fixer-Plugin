@@ -47,7 +47,7 @@ Mermaid Fixer targets common syntax problems that often appear in AI-generated o
 
 ## Example
 
-Before:
+AI-generated diagrams often fail in a way that looks like this:
 
 ````text
 ```mermaid
@@ -59,7 +59,16 @@ end
 ```
 ````
 
-After:
+Obsidian may show a Mermaid parse error instead of a diagram:
+
+```text
+ERROR ON LINE 3:
+A[Review AIGC output (Mermaid)] --> B{Score > 10}
+-------------------------------------^
+Expecting a valid node label, string, or quoted text.
+```
+
+Run Mermaid Fixer, preview the diff, apply the fix, and the same block becomes renderable:
 
 ```mermaid
 graph TD
