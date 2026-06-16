@@ -1,4 +1,4 @@
-import type { App, TFile } from 'obsidian';
+import { normalizePath, type App, type TFile } from 'obsidian';
 import { fixMermaidBlocks } from './fixer';
 import type { MermaidFixerSettings, PendingFileFix } from './types';
 
@@ -48,7 +48,7 @@ export function shouldSkipFile(
 		return true;
 	}
 
-	const normalizedPath = file.path.replace(/\\/g, '/');
+	const normalizedPath = normalizePath(file.path);
 	const skipDirs = configDir ? [...settings.skipDirs, configDir] : settings.skipDirs;
 	return skipDirs.some((skipDir) =>
 		pathMatchesSkipDir(normalizedPath, skipDir),
@@ -56,10 +56,7 @@ export function shouldSkipFile(
 }
 
 function pathMatchesSkipDir(filePath: string, skipDir: string): boolean {
-	const normalizedSkip = skipDir
-		.trim()
-		.replace(/\\/g, '/')
-		.replace(/^\/+|\/+$/g, '');
+	const normalizedSkip = normalizePath(skipDir.trim()).replace(/^\/+|\/+$/g, '');
 	if (normalizedSkip.length === 0) {
 		return false;
 	}

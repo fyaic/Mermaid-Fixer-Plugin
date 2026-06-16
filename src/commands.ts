@@ -8,7 +8,7 @@ import { scanVaultForFixes } from './vault-scanner';
 export function registerCommands(plugin: MermaidFixerPlugin) {
 	plugin.addCommand({
 		id: 'fix-current-file',
-		name: 'Fix Mermaid in current file',
+		name: 'Fix current file',
 		editorCallback: async (editor) => {
 			const original = editor.getValue();
 			const result = fixMermaidBlocks(original, plugin.settings.enabledRules);
@@ -41,7 +41,7 @@ export function registerCommands(plugin: MermaidFixerPlugin) {
 
 	plugin.addCommand({
 		id: 'fix-whole-vault',
-		name: 'Fix Mermaid in whole vault',
+		name: 'Fix whole vault',
 		callback: async () => {
 			new Notice('Scanning vault for Mermaid syntax issues...');
 			const fixes = await scanVaultForFixes(plugin.app, plugin.settings);

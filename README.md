@@ -103,8 +103,8 @@ After the plugin is accepted into the Obsidian Community directory:
 
 Open the command palette and run:
 
-- `Fix Mermaid in current file`
-- `Fix Mermaid in whole vault`
+- `Fix current file`
+- `Fix whole vault`
 
 If diff preview is enabled, Mermaid Fixer shows the proposed edits before changing your notes. The current-file command updates the active editor. The whole-vault command scans Markdown files, shows a summary, and applies changes only after confirmation.
 

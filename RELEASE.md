@@ -31,8 +31,9 @@ Suggested listing metadata:
 - `PRIVACY.md`
 - `manifest.json`
 - `versions.json`
-- `main.js`
 - `styles.css`
+
+Do not commit `main.js` to the repository. Obsidian downloads the bundled file from the GitHub release assets.
 
 ## Required GitHub release assets
 
@@ -42,7 +43,7 @@ For each release, upload these binary attachments:
 - `manifest.json`
 - `styles.css`
 
-The GitHub release tag must match `manifest.json` version exactly, for example `1.0.0`.
+The GitHub release tag must match `manifest.json` version exactly. The current release tag is `1.0.1`.
 
 ## Pre-release verification
 
@@ -60,8 +61,8 @@ Also run a manual Obsidian smoke test in a fresh vault:
 - Enable the plugin.
 - Open the settings tab.
 - Confirm both commands appear in the command palette.
-- Run `Fix Mermaid in current file` on a note with a broken Mermaid block.
-- Run `Fix Mermaid in whole vault` on a small test vault.
+- Run `Fix current file` on a note with a broken Mermaid block.
+- Run `Fix whole vault` on a small test vault.
 - Confirm diff preview and cancel/apply flows work.
 
 ## Submission
