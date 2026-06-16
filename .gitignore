@@ -5,6 +5,9 @@
 *.iml
 .idea
 
+# Serena code intelligence cache
+.serena/
+
 # npm
 node_modules
 

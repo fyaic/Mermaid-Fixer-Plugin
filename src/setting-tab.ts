@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type MermaidFixerPlugin from './main';
-import type { EnabledRules } from './types';
+import type { EnabledRules, TableRuleKey } from './types';
 
 const RULE_SETTINGS: Array<{
 	key: keyof EnabledRules;
@@ -39,6 +39,33 @@ const RULE_SETTINGS: Array<{
 	},
 ];
 
+const TABLE_RULE_SETTINGS: Array<{
+	key: TableRuleKey;
+	name: string;
+	desc: string;
+}> = [
+	{
+		key: 'collapsedTables',
+		name: 'Fix collapsed one-line tables',
+		desc: 'Split safe one-line table sequences into renderable Markdown table rows.',
+	},
+	{
+		key: 'separatorNormalization',
+		name: 'Normalize table separators',
+		desc: 'Convert table separator cells to left-aligned :--- markers.',
+	},
+	{
+		key: 'blankLineCleanup',
+		name: 'Remove blank lines inside tables',
+		desc: 'Remove blank lines only when adjacent rows clearly belong to the same table.',
+	},
+	{
+		key: 'columnPadding',
+		name: 'Pad short table rows',
+		desc: 'Add empty cells to short rows when the table column count is clear.',
+	},
+];
+
 export class MermaidFixerSettingTab extends PluginSettingTab {
 	plugin: MermaidFixerPlugin;
 
@@ -51,7 +78,7 @@ export class MermaidFixerSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		new Setting(containerEl).setName('Fix rules').setHeading();
+		new Setting(containerEl).setName('Mermaid fixes').setHeading();
 		for (const rule of RULE_SETTINGS) {
 			new Setting(containerEl)
 				.setName(rule.name)
@@ -61,6 +88,33 @@ export class MermaidFixerSettingTab extends PluginSettingTab {
 						.setValue(this.plugin.settings.enabledRules[rule.key])
 						.onChange(async (value) => {
 							this.plugin.settings.enabledRules[rule.key] = value;
+							await this.plugin.saveSettings();
+						}),
+				);
+		}
+
+		new Setting(containerEl).setName('Markdown table fixes').setHeading();
+		new Setting(containerEl)
+			.setName('Enable Markdown table fixes')
+			.setDesc('Repair common Markdown table syntax issues in the same commands.')
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.tableRules.enabled)
+					.onChange(async (value) => {
+						this.plugin.settings.tableRules.enabled = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		for (const rule of TABLE_RULE_SETTINGS) {
+			new Setting(containerEl)
+				.setName(rule.name)
+				.setDesc(rule.desc)
+				.addToggle((toggle) =>
+					toggle
+						.setValue(this.plugin.settings.tableRules[rule.key])
+						.onChange(async (value) => {
+							this.plugin.settings.tableRules[rule.key] = value;
 							await this.plugin.saveSettings();
 						}),
 				);

@@ -1,5 +1,5 @@
 import { App, Modal, Setting } from 'obsidian';
-import type { PendingFileFix } from './types';
+import type { PendingFileFix, VaultScanProgress } from './types';
 
 export class DiffModal extends Modal {
 	private readonly original: string;
@@ -96,6 +96,66 @@ export class VaultSummaryModal extends Modal {
 
 	onClose() {
 		this.contentEl.empty();
+	}
+}
+
+export class VaultScanProgressModal extends Modal {
+	private progress: VaultScanProgress = {
+		scannedFiles: 0,
+		totalFiles: 0,
+		issueFiles: 0,
+	};
+	private statusEl?: HTMLElement;
+	private barEl?: HTMLElement;
+	private detailEl?: HTMLElement;
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass('mermaid-fixer-modal');
+		contentEl.createEl('h2', { text: 'Scanning vault' });
+		this.statusEl = contentEl.createEl('p');
+		const progressOuter = contentEl.createDiv({
+			cls: 'mermaid-fixer-progress',
+		});
+		this.barEl = progressOuter.createDiv({
+			cls: 'mermaid-fixer-progress-bar',
+		});
+		this.detailEl = contentEl.createEl('p', {
+			cls: 'mermaid-fixer-progress-detail',
+		});
+		this.renderProgress();
+	}
+
+	onClose() {
+		this.contentEl.empty();
+	}
+
+	updateProgress(progress: VaultScanProgress) {
+		this.progress = progress;
+		this.renderProgress();
+	}
+
+	private renderProgress() {
+		if (!this.statusEl || !this.barEl || !this.detailEl) {
+			return;
+		}
+
+		const percent =
+			this.progress.totalFiles > 0
+				? Math.round(
+						(this.progress.scannedFiles / this.progress.totalFiles) * 100,
+					)
+				: 0;
+		this.statusEl.setText(
+			`${this.progress.scannedFiles} / ${this.progress.totalFiles} files scanned. ${this.progress.issueFiles} file(s) with issues found.`,
+		);
+		this.barEl.style.width = `${percent}%`;
+		this.detailEl.setText(
+			this.progress.currentFile
+				? `Current file: ${this.progress.currentFile}`
+				: 'Preparing scan...',
+		);
 	}
 }
 

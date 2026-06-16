@@ -1,38 +1,62 @@
 import { normalizePath, type App, type TFile } from 'obsidian';
-import { fixMermaidBlocks } from './fixer';
-import type { MermaidFixerSettings, PendingFileFix } from './types';
+import { fixMarkdownContent, hasMarkdownFixCandidate } from './content-fixer';
+import type {
+	MermaidFixerSettings,
+	PendingFileFix,
+	VaultScanProgressCallback,
+} from './types';
 
 export async function scanVaultForFixes(
 	app: App,
 	settings: MermaidFixerSettings,
+	onProgress?: VaultScanProgressCallback,
 ): Promise<PendingFileFix[]> {
 	const fixes: PendingFileFix[] = [];
 	const files = app.vault.getMarkdownFiles();
+	const reportProgress = (scannedFiles: number, currentFile?: string) => {
+		onProgress?.({
+			scannedFiles,
+			totalFiles: files.length,
+			issueFiles: fixes.length,
+			currentFile,
+		});
+	};
 
-	for (const file of files) {
-		if (shouldSkipFile(file, settings, app.vault.configDir)) {
+	reportProgress(0);
+
+	for (let index = 0; index < files.length; index += 1) {
+		const file = files[index];
+		if (!file) {
 			continue;
 		}
 
-		let original: string;
 		try {
-			original = await app.vault.read(file);
-		} catch {
-			continue;
-		}
+			if (shouldSkipFile(file, settings, app.vault.configDir)) {
+				continue;
+			}
 
-		if (!original.toLowerCase().includes('```mermaid')) {
-			continue;
-		}
+			let original: string;
+			try {
+				original = await app.vault.read(file);
+			} catch {
+				continue;
+			}
 
-		const result = fixMermaidBlocks(original, settings.enabledRules);
-		if (result.changed) {
-			fixes.push({
-				file,
-				original,
-				fixed: result.text,
-				logs: result.logs,
-			});
+			if (!hasMarkdownFixCandidate(original)) {
+				continue;
+			}
+
+			const result = fixMarkdownContent(original, settings);
+			if (result.changed) {
+				fixes.push({
+					file,
+					original,
+					fixed: result.text,
+					logs: result.logs,
+				});
+			}
+		} finally {
+			reportProgress(index + 1, file.path);
 		}
 	}
 

@@ -1,4 +1,11 @@
-import type { MermaidFixerSettings } from './types';
+import type { EnabledRules, MermaidFixerSettings, TableRules } from './types';
+
+type RawSettings = Partial<
+	Omit<MermaidFixerSettings, 'enabledRules' | 'tableRules'>
+> & {
+	enabledRules?: Partial<EnabledRules>;
+	tableRules?: Partial<TableRules>;
+};
 
 export const DEFAULT_SETTINGS: MermaidFixerSettings = {
 	enabledRules: {
@@ -9,13 +16,20 @@ export const DEFAULT_SETTINGS: MermaidFixerSettings = {
 		subgraphSpace: true,
 		unquotedAmp: true,
 	},
+	tableRules: {
+		enabled: true,
+		collapsedTables: true,
+		separatorNormalization: true,
+		blankLineCleanup: true,
+		columnPadding: true,
+	},
 	showDiffBeforeApply: true,
 	skipDirs: ['.git', 'node_modules'],
 	maxFileSizeKb: 500,
 };
 
 export function normalizeSettings(
-	data: Partial<MermaidFixerSettings> | null | undefined,
+	data: RawSettings | null | undefined,
 ): MermaidFixerSettings {
 	const maxFileSizeKb =
 		typeof data?.maxFileSizeKb === 'number' && data.maxFileSizeKb > 0
@@ -28,6 +42,10 @@ export function normalizeSettings(
 		enabledRules: {
 			...DEFAULT_SETTINGS.enabledRules,
 			...(data?.enabledRules ?? {}),
+		},
+		tableRules: {
+			...DEFAULT_SETTINGS.tableRules,
+			...(data?.tableRules ?? {}),
 		},
 		showDiffBeforeApply:
 			data?.showDiffBeforeApply ?? DEFAULT_SETTINGS.showDiffBeforeApply,

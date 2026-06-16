@@ -2,7 +2,14 @@ import { Plugin } from 'obsidian';
 import { registerCommands } from './commands';
 import { MermaidFixerSettingTab } from './setting-tab';
 import { normalizeSettings } from './settings';
-import type { MermaidFixerSettings } from './types';
+import type { EnabledRules, MermaidFixerSettings, TableRules } from './types';
+
+type RawSettings = Partial<
+	Omit<MermaidFixerSettings, 'enabledRules' | 'tableRules'>
+> & {
+	enabledRules?: Partial<EnabledRules>;
+	tableRules?: Partial<TableRules>;
+};
 
 export default class MermaidFixerPlugin extends Plugin {
 	settings!: MermaidFixerSettings;
@@ -17,7 +24,7 @@ export default class MermaidFixerPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = normalizeSettings(
-			(await this.loadData()) as Partial<MermaidFixerSettings> | null,
+			(await this.loadData()) as RawSettings | null,
 		);
 	}
 

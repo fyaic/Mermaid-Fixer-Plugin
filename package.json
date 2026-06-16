@@ -1,7 +1,7 @@
 {
 	"name": "mermaid-fixer",
-	"version": "1.0.1",
-	"description": "Auto-fix common Mermaid syntax errors in Obsidian notes.",
+	"version": "1.1.0",
+	"description": "Repair Mermaid diagrams and Markdown tables in Obsidian notes.",
 	"main": "main.js",
 	"type": "module",
 	"repository": {

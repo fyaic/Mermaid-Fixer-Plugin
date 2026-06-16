@@ -1,9 +1,9 @@
 {
 	"id": "mermaid-fixer",
 	"name": "Mermaid Fixer",
-	"version": "1.0.1",
+	"version": "1.1.0",
 	"minAppVersion": "1.1.0",
-	"description": "Auto-fix common Mermaid syntax errors in your notes.",
-	"author": "Fuyo AIC",
+	"description": "Repair Mermaid diagrams and Markdown tables in your notes.",
+	"author": "By Bondie Labs",
 	"isDesktopOnly": false
 }

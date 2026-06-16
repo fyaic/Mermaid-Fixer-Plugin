@@ -18,8 +18,8 @@ Suggested listing metadata:
 {
   "id": "mermaid-fixer",
   "name": "Mermaid Fixer",
-  "author": "Fuyo AIC",
-  "description": "Auto-fix common Mermaid syntax errors in your notes.",
+  "author": "By Bondie Labs",
+  "description": "Repair Mermaid diagrams and Markdown tables in your notes.",
   "repo": "fyaic/Mermaid-Fixer-Plugin"
 }
 ```
@@ -62,7 +62,10 @@ Also run a manual Obsidian smoke test in a fresh vault:
 - Open the settings tab.
 - Confirm both commands appear in the command palette.
 - Run `Fix current file` on a note with a broken Mermaid block.
-- Run `Fix whole vault` on a small test vault.
+- Run `Fix current file` on a note with a broken Markdown table.
+- Run `Fix whole vault` on a small test vault containing Mermaid-only and table-only issues.
+- Confirm the whole-vault scan progress modal appears before the result summary.
+- Confirm the no-issue state says `All Mermaid and table are good.`
 - Confirm diff preview and cancel/apply flows work.
 
 ## Submission

@@ -20,8 +20,19 @@ export interface EnabledRules {
 	unquotedAmp: boolean;
 }
 
+export interface TableRules {
+	enabled: boolean;
+	collapsedTables: boolean;
+	separatorNormalization: boolean;
+	blankLineCleanup: boolean;
+	columnPadding: boolean;
+}
+
+export type TableRuleKey = Exclude<keyof TableRules, 'enabled'>;
+
 export interface MermaidFixerSettings {
 	enabledRules: EnabledRules;
+	tableRules: TableRules;
 	showDiffBeforeApply: boolean;
 	skipDirs: string[];
 	maxFileSizeKb: number;
@@ -39,5 +50,14 @@ export interface PendingFileFix {
 	fixed: string;
 	logs: string[];
 }
+
+export interface VaultScanProgress {
+	scannedFiles: number;
+	totalFiles: number;
+	issueFiles: number;
+	currentFile?: string;
+}
+
+export type VaultScanProgressCallback = (progress: VaultScanProgress) => void;
 
 export type FixTuple = [string, number];

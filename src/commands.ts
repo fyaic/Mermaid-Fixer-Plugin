@@ -1,6 +1,10 @@
 import { Notice } from 'obsidian';
-import { DiffModal, VaultSummaryModal } from './diff-modal';
-import { fixMermaidBlocks } from './fixer';
+import { fixMarkdownContent } from './content-fixer';
+import {
+	DiffModal,
+	VaultScanProgressModal,
+	VaultSummaryModal,
+} from './diff-modal';
 import type MermaidFixerPlugin from './main';
 import type { PendingFileFix } from './types';
 import { scanVaultForFixes } from './vault-scanner';
@@ -11,17 +15,17 @@ export function registerCommands(plugin: MermaidFixerPlugin) {
 		name: 'Fix current file',
 		editorCallback: async (editor) => {
 			const original = editor.getValue();
-			const result = fixMermaidBlocks(original, plugin.settings.enabledRules);
+			const result = fixMarkdownContent(original, plugin.settings);
 
 			if (!result.changed) {
-				new Notice('No Mermaid syntax issues found in current file.');
+				new Notice('All Mermaid and table are good.');
 				return;
 			}
 
 			const applyFix = async () => {
 				editor.setValue(result.text);
 				new Notice(
-					`Fixed ${countFixes(result.logs)} Mermaid issue(s) in current file.`,
+					`Fixed ${countFixes(result.logs)} Markdown issue(s) in current file.`,
 				);
 			};
 
@@ -43,10 +47,20 @@ export function registerCommands(plugin: MermaidFixerPlugin) {
 		id: 'fix-whole-vault',
 		name: 'Fix whole vault',
 		callback: async () => {
-			new Notice('Scanning vault for Mermaid syntax issues...');
-			const fixes = await scanVaultForFixes(plugin.app, plugin.settings);
+			const progressModal = new VaultScanProgressModal(plugin.app);
+			progressModal.open();
+			let fixes: PendingFileFix[];
+			try {
+				fixes = await scanVaultForFixes(
+					plugin.app,
+					plugin.settings,
+					(progress) => progressModal.updateProgress(progress),
+				);
+			} finally {
+				progressModal.close();
+			}
 			if (fixes.length === 0) {
-				new Notice('No Mermaid issues found in vault.');
+				new Notice('All Mermaid and table are good.');
 				return;
 			}
 
@@ -59,7 +73,7 @@ export function registerCommands(plugin: MermaidFixerPlugin) {
 					return;
 				}
 				new Notice(
-					`Fixed ${summary.issueCount} Mermaid issue(s) in ${summary.applied} file(s).`,
+					`Fixed ${summary.issueCount} Markdown issue(s) in ${summary.applied} file(s).`,
 				);
 			};
 
@@ -87,7 +101,7 @@ async function applyVaultFixes(
 	for (const fix of fixes) {
 		try {
 			await plugin.app.vault.process(fix.file, (current) => {
-				const result = fixMermaidBlocks(current, plugin.settings.enabledRules);
+				const result = fixMarkdownContent(current, plugin.settings);
 				return result.changed ? result.text : current;
 			});
 			applied += 1;
