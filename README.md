@@ -170,6 +170,10 @@ All Mermaid and table are good.
 
 Mermaid Fixer reads note contents only when you run a repair command. It writes only the notes you explicitly choose to update. Mermaid and table repair both run locally. The plugin does not send vault content off device, does not use telemetry, and does not require an account or API key.
 
+### Vault enumeration
+
+Mermaid Fixer calls `app.vault.getMarkdownFiles()` only when you run the `Fix whole vault` command. This lets the plugin list Markdown file paths in the current vault so it can scan for Mermaid diagrams and Markdown tables that may need repair. During that command, non-skipped Markdown files are read in memory to detect fix candidates. The scan runs locally, does not make network requests, and does not send file paths or note contents off device. Files are modified only after you review and confirm the proposed changes.
+
 See [PRIVACY.md](PRIVACY.md) for the full data-flow summary.
 
 ## Release

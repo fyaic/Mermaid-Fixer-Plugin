@@ -10,6 +10,12 @@ Mermaid Fixer is a local Obsidian plugin for repairing Mermaid diagrams and Mark
 | Fix whole vault | Manual command | Markdown files selected by the scan result, only after confirmation | None | Configure skipped directories and max file size; review the scan summary before applying |
 | Plugin settings | On save | Obsidian plugin data managed by `Plugin.saveData()` | None | Change or reset settings in Obsidian |
 
+## Vault enumeration
+
+The `Fix whole vault` command calls `app.vault.getMarkdownFiles()` to enumerate Markdown file paths in the current vault. This enumeration is used only to find files that may contain Mermaid diagrams or Markdown tables. During the scan, non-skipped Markdown files are read in memory to detect fix candidates. File paths and note contents are not sent off device, logged, or stored outside the notes you choose to modify.
+
+You can limit the scan with skipped directories and the max file size setting. If diff preview is enabled, the plugin shows proposed changes before writing any file.
+
 ## Network use
 
 Mermaid and table repairs both run locally. Mermaid Fixer does not make network requests.

@@ -43,7 +43,9 @@ For each release, upload these binary attachments:
 - `manifest.json`
 - `styles.css`
 
-The GitHub release tag must match `manifest.json` version exactly. The current release tag is `1.0.1`.
+The GitHub release tag must match `manifest.json` version exactly. The current release tag is `1.1.0`.
+
+Automated releases should generate GitHub artifact attestations for all release assets so users can verify that the downloaded files were built from this repository.
 
 ## Pre-release verification
 
@@ -53,6 +55,14 @@ npm test
 npm run lint
 npm run build
 node --check main.js
+```
+
+After the GitHub Actions release workflow finishes, verify artifact attestations for the release assets:
+
+```bash
+gh attestation verify main.js -R fyaic/Mermaid-Fixer-Plugin
+gh attestation verify manifest.json -R fyaic/Mermaid-Fixer-Plugin
+gh attestation verify styles.css -R fyaic/Mermaid-Fixer-Plugin
 ```
 
 Also run a manual Obsidian smoke test in a fresh vault:
