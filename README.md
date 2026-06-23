@@ -10,16 +10,7 @@ AIGC tools now generate more Markdown, specs, tables, and diagrams than ever. Th
 
 Mermaid Fixer turns those repeat fixes into a one-command local Markdown repair workflow. Run it on the current note or scan the whole vault, preview the diff, and apply the safe fixes you want.
 
-```mermaid
-flowchart LR
-    A[AIGC draft] --> B[Mermaid diagram or Markdown table]
-    B --> C{Renders cleanly in Obsidian?}
-    C -- Yes --> D[Keep writing]
-    C -- No --> E[Run Mermaid Fixer]
-    E --> F[Preview diff]
-    F --> G[Apply fixes]
-    G --> D
-```
+Open the command palette, choose the current-file or whole-vault repair command, review the diff preview, then apply only when the proposed change looks right.
 
 ## Highlights
 
@@ -33,6 +24,22 @@ flowchart LR
 | Rule toggles | Enable or disable each fix rule independently. |
 | Local-first | No accounts, API keys, network requests, telemetry, or hosted service. |
 | Free release | No paid features, subscriptions, donations, or external paid services. |
+
+## Usage
+
+Search for **Mermaid Fixer** in the command palette. The plugin provides one command for the active note and one for a vault-wide scan.
+
+![Mermaid Fixer commands in the Obsidian command palette](docs/images/command-palette.png)
+
+When diff preview is enabled, Mermaid Fixer shows the exact edits it wants to make. Nothing is written until you click **Apply**.
+
+![Mermaid Fixer diff preview before applying changes](docs/images/diff-preview.png)
+
+When no repair is needed, Mermaid Fixer confirms the clean state with:
+
+```text
+All Mermaid and table are good.
+```
 
 ## Fix rules
 
@@ -48,6 +55,9 @@ Mermaid Fixer targets common syntax problems that often appear in AI-generated o
 | Parenthesis conflicts | Node text contains brackets that conflict with the node shape. | Quote the node text. |
 | Subgraph titles with spaces | Multi-word subgraph titles are unquoted. | Quote the subgraph title. |
 | Unquoted ampersands | Node text contains `&` without quotes. | Quote the node text. |
+| Style line comments | `style ... %% comment` is parsed as part of the style statement. | Move the comment onto its own Mermaid comment line. |
+| Nested quotes | Labels or subgraph titles contain nested double quotes. | Replace the inner quotes with safe single quotes. |
+| C4 keywords in flowcharts | `C4Context` / `C4Container` text can trigger Mermaid's C4 parser by mistake. | Rewrite the internal node keywords to flowchart-safe identifiers. |
 
 ### Markdown table rules
 
@@ -65,36 +75,7 @@ Table repair is conservative. Ambiguous rows are left unchanged, and fenced code
 
 ### Mermaid diagram repair
 
-AI-generated Mermaid diagrams often fail in a way that looks like this:
-
-````text
-```mermaid
-graph TD
-A[Review AIGC output (Mermaid)] --> B{Score > 10}
-subgraph Draft Flow
-B --> C[Fix & publish]
-end
-```
-````
-
-Obsidian may show a Mermaid parse error instead of a diagram:
-
-```text
-ERROR ON LINE 3:
-A[Review AIGC output (Mermaid)] --> B{Score > 10}
--------------------------------------^
-Expecting a valid node label, string, or quoted text.
-```
-
-Run Mermaid Fixer, preview the diff, apply the fix, and the same diagram becomes renderable:
-
-```mermaid
-graph TD
-A["Review AIGC output (Mermaid)"] --> B{"Score > 10"}
-subgraph "Draft Flow"
-B --> C["Fix & publish"]
-end
-```
+Mermaid Fixer is aimed at diagrams that are almost valid: an unquoted subgraph title, a label with conflicting brackets, an inline `style` comment, or flowchart text that accidentally trips Mermaid's C4 parser. The preview shows the exact before/after diff before the note changes.
 
 ### Markdown table repair
 
@@ -132,21 +113,6 @@ After the plugin is accepted into the Obsidian Community directory:
 4. Reload Obsidian.
 5. Enable Mermaid Fixer in Community plugins.
 
-## Usage
-
-Open the command palette and run:
-
-- `Fix current file`
-- `Fix whole vault`
-
-If diff preview is enabled, Mermaid Fixer shows the proposed edits before changing your notes. The current-file command updates the active editor. The whole-vault command scans Markdown files for Mermaid or table issues, shows scan progress, opens a summary, and applies changes only after confirmation.
-
-When no repair is needed, Mermaid Fixer confirms the clean state with:
-
-```text
-All Mermaid and table are good.
-```
-
 ## Settings
 
 | Setting | Purpose |
@@ -157,6 +123,9 @@ All Mermaid and table are good.
 | Enable parenthesis conflict fix | Toggle node text quoting for bracket conflicts. |
 | Enable subgraph title fix | Toggle multi-word subgraph title quoting. |
 | Enable unquoted ampersand fix | Toggle ampersand text quoting. |
+| Enable style comment fix | Toggle moving Mermaid `style` line comments onto separate lines. |
+| Enable nested quote fix | Toggle nested double-quote cleanup in Mermaid labels and titles. |
+| Enable C4 keyword fix | Toggle C4 keyword rewrites that prevent flowchart parser misdetection. |
 | Enable Markdown table fixes | Toggle all Markdown table repair rules. |
 | Fix collapsed one-line tables | Toggle safe collapsed table splitting. |
 | Normalize table separators | Toggle table separator normalization. |
