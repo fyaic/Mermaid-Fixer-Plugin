@@ -15,6 +15,9 @@ export const DEFAULT_SETTINGS: MermaidFixerSettings = {
 		parenConflict: true,
 		subgraphSpace: true,
 		unquotedAmp: true,
+		styleComment: true,
+		nestedQuote: true,
+		c4Keyword: true,
 	},
 	tableRules: {
 		enabled: true,

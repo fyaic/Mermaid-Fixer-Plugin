@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
 	detectIssues,
 	fixFlowchartDiamondGt,
+	fixC4Keywords,
 	fixMermaidBlocks,
+	fixNestedQuotes,
 	fixNodeTextParens,
 	fixSequenceMultiline,
 	fixStateLabels,
+	fixStyleComments,
 	fixSubgraphTitles,
 	fixUnquotedAmpersand,
 } from '../src/fixer';
@@ -13,6 +16,8 @@ import {
 describe('detectIssues', () => {
 	it('detects all supported issue keys', () => {
 		const block = [
+			'flowchart LR',
+			'Types --> C4Context[C4Context / C4Container]',
 			'sequenceDiagram',
 			'Alice->>:',
 			'  second line',
@@ -23,6 +28,8 @@ describe('detectIssues', () => {
 			'A{score > 10} --> B',
 			'B[Hello (world)] --> C',
 			'C[Tom & Jerry] --> D',
+			'style D fill:#fff,stroke:#333  %% white',
+			'E["bad "quote" label"] --> F',
 			'subgraph My Group',
 			'D-->E',
 			'end',
@@ -35,6 +42,9 @@ describe('detectIssues', () => {
 			'paren_conflict',
 			'subgraph_space',
 			'unquoted_amp',
+			'style_comment',
+			'nested_quote',
+			'c4_keyword',
 		]);
 	});
 });
@@ -87,6 +97,12 @@ describe('individual fixes', () => {
 		]);
 	});
 
+	it('leaves quoted Mermaid syntax examples unchanged', () => {
+		const input = 'graph TD\nNodes --> Db["id[(label)]"]\nNodes --> Labels["Nodes & Shapes"]';
+		expect(fixNodeTextParens(input)).toEqual([input, 0]);
+		expect(fixUnquotedAmpersand(input)).toEqual([input, 0]);
+	});
+
 	it('quotes curly node text containing square brackets without crashing', () => {
 		const input = 'graph TD\nA{Has [brackets]} --> B';
 		expect(fixNodeTextParens(input)).toEqual([
@@ -108,6 +124,11 @@ describe('individual fixes', () => {
 		expect(fixSubgraphTitles(input)).toEqual([input, 0]);
 	});
 
+	it('leaves subgraph id plus quoted title syntax unchanged', () => {
+		const input = 'graph TD\nsubgraph SIBLINGS ["Parallel Syntaxes & Alternatives"]\nA-->B\nend';
+		expect(fixSubgraphTitles(input)).toEqual([input, 0]);
+	});
+
 	it('quotes node text containing unquoted ampersands', () => {
 		const input = 'graph TD\nA[Tom & Jerry] --> B';
 		expect(fixUnquotedAmpersand(input)).toEqual([
@@ -119,6 +140,41 @@ describe('individual fixes', () => {
 	it('leaves already quoted ampersand text unchanged', () => {
 		const input = 'graph TD\nA["Tom & Jerry"] --> B';
 		expect(fixUnquotedAmpersand(input)).toEqual([input, 0]);
+	});
+
+	it('moves inline comments off Mermaid style lines', () => {
+		const input = 'graph TD\nstyle A fill:#fff,stroke:#333  %% white\nstyle B fill:#eee,stroke:#333\t%% gray';
+		expect(fixStyleComments(input)).toEqual([
+			'graph TD\nstyle A fill:#fff,stroke:#333\n%% white\nstyle B fill:#eee,stroke:#333\n%% gray',
+			2,
+		]);
+	});
+
+	it('repairs nested double quotes inside subgraph titles and labels', () => {
+		const input = [
+			'graph TD',
+			'subgraph "SIBLINGS ["Parallel Syntaxes & Alternatives"]"',
+			'Db[""id[(label)"]"]',
+			'end',
+		].join('\n');
+
+		expect(fixNestedQuotes(input)).toEqual([
+			[
+				'graph TD',
+				'subgraph "SIBLINGS [\'Parallel Syntaxes & Alternatives\']"',
+				'Db["\'id[(label)\']"]',
+				'end',
+			].join('\n'),
+			2,
+		]);
+	});
+
+	it('avoids C4 diagram keyword misdetection inside flowcharts', () => {
+		const input = 'flowchart TD\nTypes --> C4Context[C4Context / C4Container]';
+		expect(fixC4Keywords(input)).toEqual([
+			'flowchart TD\nTypes --> C4Ctx[C4Ctx / C4Cont]',
+			3,
+		]);
 	});
 });
 
@@ -176,6 +232,33 @@ describe('fixMermaidBlocks', () => {
 		const input = '# Plain markdown';
 		expect(fixMermaidBlocks(input)).toEqual({
 			text: input,
+			logs: [],
+			changed: false,
+		});
+	});
+
+	it('fixes ecosystem concept-map regressions idempotently', () => {
+		const input = [
+			'```mermaid',
+			'flowchart TD',
+			'    subgraph "SIBLINGS ["Parallel Syntaxes & Alternatives"]"',
+			'        Types --> C4Context[C4Context / C4Container]',
+			'        Nodes --> Db[""id[(label)"]"]',
+			'        style Types fill:#fff,stroke:#333  %% white',
+			'    end',
+			'```',
+		].join('\n');
+
+		const first = fixMermaidBlocks(input);
+		const second = fixMermaidBlocks(first.text);
+
+		expect(first.logs).toEqual([
+			'style_comment x1',
+			'nested_quote x2',
+			'c4_keyword x3',
+		]);
+		expect(second).toEqual({
+			text: first.text,
 			logs: [],
 			changed: false,
 		});

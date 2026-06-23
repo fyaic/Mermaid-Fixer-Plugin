@@ -9,6 +9,9 @@ const ISSUE_TO_RULE: Record<IssueKey, keyof EnabledRules> = {
 	paren_conflict: 'parenConflict',
 	subgraph_space: 'subgraphSpace',
 	unquoted_amp: 'unquotedAmp',
+	style_comment: 'styleComment',
+	nested_quote: 'nestedQuote',
+	c4_keyword: 'c4Keyword',
 };
 
 export function detectIssues(block: string): IssueKey[] {
@@ -31,6 +34,18 @@ export function detectIssues(block: string): IssueKey[] {
 	}
 	if (/[[{(][^\]})]*&[^\]})]*[\]})]/.test(block)) {
 		issues.push('unquoted_amp');
+	}
+	if (/^\s*style\s+\S+\s+\S.*?[ \t]+%%.*$/m.test(block)) {
+		issues.push('style_comment');
+	}
+	if (
+		/^\s*subgraph\s+"[^"\n]*"[^"\n]*".*$/m.test(block) ||
+		/\[[^\n\]]*"[^\n\]]*"[^\n\]]*"[^\n\]]*\]/.test(block)
+	) {
+		issues.push('nested_quote');
+	}
+	if (/^\s*(?:flowchart|graph)\b[\s\S]*\bC4(?:Context|Container|Component|Dynamic|Deployment)\b/.test(block)) {
+		issues.push('c4_keyword');
 	}
 
 	return issues;
@@ -89,7 +104,7 @@ export function quoteNodeText(
 		pattern,
 		(match: string, pre: string, text: string, post: string) => {
 			const stripped = text.trim();
-			if (isQuoted(stripped)) {
+			if (isQuoted(stripped) || startsWithQuote(stripped)) {
 				return match;
 			}
 			if (shouldQuote(text)) {
@@ -109,7 +124,8 @@ export function fixNodeTextParens(block: string): FixTuple {
 	let fixed = block.replace(
 		squarePattern,
 		(match: string, pre: string, text: string) => {
-			if (isQuoted(text)) {
+			const stripped = text.trim();
+			if (isQuoted(stripped) || startsWithQuote(stripped)) {
 				return match;
 			}
 			const hasRoundParens = text.includes('(') && text.includes(')');
@@ -126,7 +142,8 @@ export function fixNodeTextParens(block: string): FixTuple {
 	fixed = fixed.replace(
 		curlyPattern,
 		(match: string, pre: string, text: string) => {
-			if (isQuoted(text)) {
+			const stripped = text.trim();
+			if (isQuoted(stripped) || startsWithQuote(stripped)) {
 				return match;
 			}
 			if (text.includes('[') && text.includes(']')) {
@@ -147,7 +164,7 @@ export function fixSubgraphTitles(block: string): FixTuple {
 		pattern,
 		(match: string, prefix: string, titleRaw: string) => {
 			const title = titleRaw.trim();
-			if (isQuoted(title)) {
+			if (isQuoted(title) || hasSubgraphIdQuotedTitle(title)) {
 				return match;
 			}
 			if (title.includes(' ') || title.includes('\t')) {
@@ -179,6 +196,82 @@ export function fixUnquotedAmpersand(block: string): FixTuple {
 		changes += count;
 	}
 
+	return [fixed, changes];
+}
+
+export function fixStyleComments(block: string): FixTuple {
+	const pattern = /^(\s*style\s+\S+\s+\S.*?)([ \t]+%%[^\r\n]*)$/gm;
+	let changes = 0;
+	const fixed = block.replace(
+		pattern,
+		(match: string, styleLine: string, comment: string) => {
+			changes += 1;
+			const indent = /^\s*/.exec(styleLine)?.[0] ?? '';
+			return `${styleLine.trimEnd()}\n${indent}${comment.trimStart()}`;
+		},
+	);
+	return [fixed, changes];
+}
+
+export function fixNestedQuotes(block: string): FixTuple {
+	let changes = 0;
+	const fixed = block
+		.split(/\r?\n/)
+		.map((line: string) => {
+			let nextLine = line;
+			const originalLine = line;
+			const subgraphMatch = /^(\s*subgraph\s+")(.+)("\s*)$/.exec(nextLine);
+			if (subgraphMatch?.[2]?.includes('"')) {
+				nextLine = `${subgraphMatch[1]}${subgraphMatch[2].replace(/"/g, "'")}${subgraphMatch[3]}`;
+			}
+
+			for (const [open, close] of [
+				['["', '"]'],
+				['("', '")'],
+				['{"', '"}'],
+			] as const) {
+				const start = nextLine.indexOf(open);
+				const end = nextLine.lastIndexOf(close);
+				if (start < 0 || end <= start + open.length) {
+					continue;
+				}
+				const label = nextLine.slice(start + open.length, end);
+				if (!label.includes('"')) {
+					continue;
+				}
+				nextLine = `${nextLine.slice(0, start + open.length)}${label.replace(/"/g, "'")}${nextLine.slice(end)}`;
+			}
+
+			if (nextLine !== originalLine) {
+				changes += 1;
+			}
+			return nextLine;
+		})
+		.join('\n');
+	return [fixed, changes];
+}
+
+const C4_KEYWORD_REPLACEMENTS: Record<string, string> = {
+	C4Context: 'C4Ctx',
+	C4Container: 'C4Cont',
+	C4Component: 'C4Comp',
+	C4Dynamic: 'C4Dyn',
+	C4Deployment: 'C4Deploy',
+};
+
+export function fixC4Keywords(block: string): FixTuple {
+	if (!/^\s*(?:flowchart|graph)\b/m.test(block)) {
+		return [block, 0];
+	}
+
+	let changes = 0;
+	let fixed = block;
+	for (const [keyword, replacement] of Object.entries(C4_KEYWORD_REPLACEMENTS)) {
+		fixed = fixed.replace(new RegExp(`\\b${keyword}\\b`, 'g'), () => {
+			changes += 1;
+			return replacement;
+		});
+	}
 	return [fixed, changes];
 }
 
@@ -234,6 +327,12 @@ function applyIssueFix(issue: IssueKey, block: string): FixTuple {
 			return fixSubgraphTitles(block);
 		case 'unquoted_amp':
 			return fixUnquotedAmpersand(block);
+		case 'style_comment':
+			return fixStyleComments(block);
+		case 'nested_quote':
+			return fixNestedQuotes(block);
+		case 'c4_keyword':
+			return fixC4Keywords(block);
 	}
 }
 
@@ -246,6 +345,14 @@ function isRuleEnabled(
 
 function isQuoted(text: string): boolean {
 	return text.startsWith('"') && text.endsWith('"');
+}
+
+function startsWithQuote(text: string): boolean {
+	return text.startsWith('"') || text.startsWith("'");
+}
+
+function hasSubgraphIdQuotedTitle(title: string): boolean {
+	return /^\S+\s+\[".*"\]$/.test(title);
 }
 
 function splitLinesLikePython(text: string): string[] {

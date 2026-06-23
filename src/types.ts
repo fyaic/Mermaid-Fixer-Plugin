@@ -7,6 +7,9 @@ export const ISSUE_KEYS = [
 	'paren_conflict',
 	'subgraph_space',
 	'unquoted_amp',
+	'style_comment',
+	'nested_quote',
+	'c4_keyword',
 ] as const;
 
 export type IssueKey = (typeof ISSUE_KEYS)[number];
@@ -18,6 +21,9 @@ export interface EnabledRules {
 	parenConflict: boolean;
 	subgraphSpace: boolean;
 	unquotedAmp: boolean;
+	styleComment: boolean;
+	nestedQuote: boolean;
+	c4Keyword: boolean;
 }
 
 export interface TableRules {

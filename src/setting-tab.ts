@@ -37,6 +37,21 @@ const RULE_SETTINGS: Array<{
 		name: 'Enable unquoted ampersand fix',
 		desc: 'Quote node text containing unquoted ampersands.',
 	},
+	{
+		key: 'styleComment',
+		name: 'Enable style comment fix',
+		desc: 'Move inline comments off Mermaid style lines.',
+	},
+	{
+		key: 'nestedQuote',
+		name: 'Enable nested quote fix',
+		desc: 'Replace nested double quotes inside Mermaid titles and labels.',
+	},
+	{
+		key: 'c4Keyword',
+		name: 'Enable C4 keyword fix',
+		desc: 'Avoid C4 keyword misdetection inside flowcharts.',
+	},
 ];
 
 const TABLE_RULE_SETTINGS: Array<{
