@@ -1,4 +1,4 @@
-import { fixMermaidBlocks } from './fixer';
+import { fixMermaidBlocks, hasMermaidFixCandidate } from './fixer';
 import { fixMarkdownTables } from './table-fixer';
 import type { FixResult, MermaidFixerSettings } from './types';
 
@@ -20,5 +20,5 @@ export function fixMarkdownContent(
 }
 
 export function hasMarkdownFixCandidate(markdown: string): boolean {
-	return markdown.toLowerCase().includes('```mermaid') || markdown.includes('|');
+	return hasMermaidFixCandidate(markdown) || markdown.includes('|');
 }

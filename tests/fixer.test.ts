@@ -3,6 +3,8 @@ import {
 	detectIssues,
 	fixFlowchartDiamondGt,
 	fixC4Keywords,
+	fixFlowchartEdgeLabels,
+	hasMermaidFixCandidate,
 	fixMermaidBlocks,
 	fixNestedQuotes,
 	fixNodeTextParens,
@@ -18,6 +20,7 @@ describe('detectIssues', () => {
 		const block = [
 			'flowchart LR',
 			'Types --> C4Context[C4Context / C4Container]',
+			'Products -->|POST /v1/products/{key}/billing/*| Billing',
 			'sequenceDiagram',
 			'Alice->>:',
 			'  second line',
@@ -45,6 +48,7 @@ describe('detectIssues', () => {
 			'style_comment',
 			'nested_quote',
 			'c4_keyword',
+			'edge_label_special',
 		]);
 	});
 });
@@ -129,6 +133,24 @@ describe('individual fixes', () => {
 		expect(fixSubgraphTitles(input)).toEqual([input, 0]);
 	});
 
+	it('repairs quoted subgraph id-title shorthand', () => {
+		const input = 'flowchart TB\nsubgraph "SH[SynapseHub 控制面 · identity.fuyonder.tech]"\nA-->B\nend';
+		expect(detectIssues(input)).toContain('subgraph_space');
+		expect(fixSubgraphTitles(input)).toEqual([
+			'flowchart TB\nsubgraph SH ["SynapseHub 控制面 · identity.fuyonder.tech"]\nA-->B\nend',
+			1,
+		]);
+	});
+
+	it('normalizes compact quoted subgraph id-title syntax', () => {
+		const input = 'flowchart TB\nsubgraph SH["\'SynapseHub 控制面 · identity.fuyonder.tech\'"]\nA-->B\nend';
+		expect(detectIssues(input)).toContain('subgraph_space');
+		expect(fixSubgraphTitles(input)).toEqual([
+			'flowchart TB\nsubgraph SH ["SynapseHub 控制面 · identity.fuyonder.tech"]\nA-->B\nend',
+			1,
+		]);
+	});
+
 	it('quotes node text containing unquoted ampersands', () => {
 		const input = 'graph TD\nA[Tom & Jerry] --> B';
 		expect(fixUnquotedAmpersand(input)).toEqual([
@@ -174,6 +196,26 @@ describe('individual fixes', () => {
 		expect(fixC4Keywords(input)).toEqual([
 			'flowchart TD\nTypes --> C4Ctx[C4Ctx / C4Cont]',
 			3,
+		]);
+	});
+
+	it('quotes flowchart edge labels with syntax-significant characters', () => {
+		const input = [
+			'flowchart TD',
+			'Products -->|POST /v1/products/{key}/billing/*| Billing',
+			'Products -->|"GET /v1/products/{key}"| ProductContext',
+			'User -->|登录/注册| Auth0',
+		].join('\n');
+
+		expect(detectIssues(input)).toContain('edge_label_special');
+		expect(fixFlowchartEdgeLabels(input)).toEqual([
+			[
+				'flowchart TD',
+				'Products -->|"POST /v1/products/{key}/billing/*"| Billing',
+				'Products -->|"GET /v1/products/{key}"| ProductContext',
+				'User -->|登录/注册| Auth0',
+			].join('\n'),
+			1,
 		]);
 	});
 });
@@ -234,6 +276,40 @@ describe('fixMermaidBlocks', () => {
 			text: input,
 			logs: [],
 			changed: false,
+		});
+	});
+
+	it('wraps and repairs bare Mermaid documents', () => {
+		const input = [
+			'flowchart TB',
+			'  subgraph "SH[SynapseHub 控制面 · identity.fuyonder.tech]"',
+			'    A-->B',
+			'    Products -->|POST /v1/products/{key}/billing/*| Billing',
+			'  end',
+		].join('\n');
+
+		expect(hasMermaidFixCandidate(input)).toBe(true);
+		expect(fixMermaidBlocks(input)).toEqual({
+			text: [
+				'```mermaid',
+				'flowchart TB',
+				'  subgraph SH ["SynapseHub 控制面 · identity.fuyonder.tech"]',
+				'    A-->B',
+				'    Products -->|"POST /v1/products/{key}/billing/*"| Billing',
+				'  end',
+				'```',
+			].join('\n'),
+			logs: ['bare_mermaid x1', 'subgraph_space x1', 'edge_label_special x1'],
+			changed: true,
+		});
+	});
+
+	it('repairs CRLF and tilde fenced Mermaid blocks', () => {
+		const input = '~'.repeat(3) + 'mermaid\r\nflowchart TD\r\nA[Hello (world)] --> B\r\n' + '~'.repeat(3);
+		expect(fixMermaidBlocks(input)).toEqual({
+			text: ['~~~mermaid', 'flowchart TD', 'A["Hello (world)"] --> B', '~~~'].join('\n'),
+			logs: ['paren_conflict x1'],
+			changed: true,
 		});
 	});
 

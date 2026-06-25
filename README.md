@@ -53,11 +53,13 @@ Mermaid Fixer targets common syntax problems that often appear in AI-generated o
 | State labels with `>` or `+` | Transition labels contain special characters without quotes. | Quote the transition label. |
 | Diamond node `>` text | Flowchart decision text contains `>`. | Quote the diamond node text. |
 | Parenthesis conflicts | Node text contains brackets that conflict with the node shape. | Quote the node text. |
-| Subgraph titles with spaces | Multi-word subgraph titles are unquoted. | Quote the subgraph title. |
+| Bare Mermaid documents | A note contains only Mermaid code without a `mermaid` fence. | Wrap the document in a Mermaid code fence. |
+| Subgraph title syntax | Multi-word titles, quoted `ID[Title]` shorthand, or compact `ID["Title"]` syntax confuse Mermaid. | Normalize the subgraph title syntax. |
 | Unquoted ampersands | Node text contains `&` without quotes. | Quote the node text. |
 | Style line comments | `style ... %% comment` is parsed as part of the style statement. | Move the comment onto its own Mermaid comment line. |
 | Nested quotes | Labels or subgraph titles contain nested double quotes. | Replace the inner quotes with safe single quotes. |
 | C4 keywords in flowcharts | `C4Context` / `C4Container` text can trigger Mermaid's C4 parser by mistake. | Rewrite the internal node keywords to flowchart-safe identifiers. |
+| Edge labels with syntax characters | Flowchart edge labels contain `{}`, `[]`, `()`, or `*` without quotes. | Quote the edge label. |
 
 ### Markdown table rules
 
@@ -75,7 +77,7 @@ Table repair is conservative. Ambiguous rows are left unchanged, and fenced code
 
 ### Mermaid diagram repair
 
-Mermaid Fixer is aimed at diagrams that are almost valid: an unquoted subgraph title, a label with conflicting brackets, an inline `style` comment, or flowchart text that accidentally trips Mermaid's C4 parser. The preview shows the exact before/after diff before the note changes.
+Mermaid Fixer is aimed at diagrams that are almost valid: an unquoted subgraph title, a label with conflicting brackets, an inline `style` comment, an API route like `{key}` inside an edge label, or flowchart text that accidentally trips Mermaid's C4 parser. The preview shows the exact before/after diff before the note changes.
 
 ### Markdown table repair
 
@@ -121,11 +123,12 @@ After the plugin is accepted into the Obsidian Community directory:
 | Enable state label fix | Toggle state transition label quoting. |
 | Enable diamond node fix | Toggle diamond text quoting. |
 | Enable parenthesis conflict fix | Toggle node text quoting for bracket conflicts. |
-| Enable subgraph title fix | Toggle multi-word subgraph title quoting. |
+| Enable subgraph title fix | Toggle subgraph title normalization. |
 | Enable unquoted ampersand fix | Toggle ampersand text quoting. |
 | Enable style comment fix | Toggle moving Mermaid `style` line comments onto separate lines. |
 | Enable nested quote fix | Toggle nested double-quote cleanup in Mermaid labels and titles. |
 | Enable C4 keyword fix | Toggle C4 keyword rewrites that prevent flowchart parser misdetection. |
+| Enable edge label special character fix | Toggle quoting for flowchart edge labels with Mermaid-significant characters. |
 | Enable Markdown table fixes | Toggle all Markdown table repair rules. |
 | Fix collapsed one-line tables | Toggle safe collapsed table splitting. |
 | Normalize table separators | Toggle table separator normalization. |

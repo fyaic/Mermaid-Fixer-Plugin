@@ -10,6 +10,7 @@ export const ISSUE_KEYS = [
 	'style_comment',
 	'nested_quote',
 	'c4_keyword',
+	'edge_label_special',
 ] as const;
 
 export type IssueKey = (typeof ISSUE_KEYS)[number];
@@ -24,6 +25,7 @@ export interface EnabledRules {
 	styleComment: boolean;
 	nestedQuote: boolean;
 	c4Keyword: boolean;
+	edgeLabelSpecial: boolean;
 }
 
 export interface TableRules {

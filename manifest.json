@@ -1,7 +1,7 @@
 {
 	"id": "mermaid-fixer",
 	"name": "Mermaid Fixer",
-	"version": "1.1.3",
+	"version": "1.1.4",
 	"minAppVersion": "1.1.0",
 	"description": "Repair Mermaid diagrams and Markdown tables in your notes.",
 	"author": "By Bondie Labs",

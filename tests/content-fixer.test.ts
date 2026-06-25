@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixMarkdownContent } from '../src/content-fixer';
+import { fixMarkdownContent, hasMarkdownFixCandidate } from '../src/content-fixer';
 import { DEFAULT_SETTINGS, normalizeSettings } from '../src/settings';
 
 describe('fixMarkdownContent', () => {
@@ -21,6 +21,33 @@ describe('fixMarkdownContent', () => {
 				'```',
 			].join('\n'),
 			logs: ['paren_conflict x1'],
+			changed: true,
+		});
+	});
+
+	it('fixes bare Mermaid documents before table parsing sees edge labels', () => {
+		const input = [
+			'flowchart TB',
+			'  subgraph "SH[SynapseHub 控制面 · identity.fuyonder.tech]"',
+			'    User -->|登录/注册| Auth0',
+			'    Products -->|POST /v1/products/{key}/billing/*| Billing',
+			'  end',
+		].join('\n');
+
+		const result = fixMarkdownContent(input, DEFAULT_SETTINGS);
+
+		expect(hasMarkdownFixCandidate(input)).toBe(true);
+		expect(result).toEqual({
+			text: [
+				'```mermaid',
+				'flowchart TB',
+				'  subgraph SH ["SynapseHub 控制面 · identity.fuyonder.tech"]',
+				'    User -->|登录/注册| Auth0',
+				'    Products -->|"POST /v1/products/{key}/billing/*"| Billing',
+				'  end',
+				'```',
+			].join('\n'),
+			logs: ['bare_mermaid x1', 'subgraph_space x1', 'edge_label_special x1'],
 			changed: true,
 		});
 	});

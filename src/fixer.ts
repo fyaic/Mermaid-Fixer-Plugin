@@ -1,6 +1,13 @@
 import type { EnabledRules, FixResult, FixTuple, IssueKey } from './types';
 
-export const MERMAID_REGEX = /```mermaid\n(.*?)\n```/gis;
+export const MERMAID_REGEX = /(`{3,}|~{3,})[ \t]*mermaid[^\r\n]*\r?\n([\s\S]*?)\r?\n\1/gim;
+
+const MERMAID_FENCE_REGEX = /(?:`{3,}|~{3,})[ \t]*mermaid\b/i;
+const BARE_MERMAID_START_REGEX =
+	/^(?:(?:flowchart|graph)\s+(?:TB|TD|BT|RL|LR)\b|(?:sequenceDiagram|classDiagram|classDiagram-v2|stateDiagram|stateDiagram-v2|erDiagram|journey|gantt|pie|mindmap|timeline|gitGraph|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b)/i;
+const QUOTED_SUBGRAPH_ID_TITLE_REGEX = /^"([A-Za-z_][\w-]*)\[([^\]\n]+)\]"$/;
+const COMPACT_QUOTED_SUBGRAPH_ID_TITLE_REGEX = /^([A-Za-z_][\w-]*)\["([^"\n]+)"\]$/;
+const FLOWCHART_EDGE_LABEL_REGEX = /\|([^|\r\n]+)\|/g;
 
 const ISSUE_TO_RULE: Record<IssueKey, keyof EnabledRules> = {
 	seq_multiline: 'seqMultiline',
@@ -12,6 +19,7 @@ const ISSUE_TO_RULE: Record<IssueKey, keyof EnabledRules> = {
 	style_comment: 'styleComment',
 	nested_quote: 'nestedQuote',
 	c4_keyword: 'c4Keyword',
+	edge_label_special: 'edgeLabelSpecial',
 };
 
 export function detectIssues(block: string): IssueKey[] {
@@ -29,7 +37,11 @@ export function detectIssues(block: string): IssueKey[] {
 	if (/\[[^\]]*\([^\]]*\)/.test(block) || /\{[^}]*\[[^}]*\]/.test(block)) {
 		issues.push('paren_conflict');
 	}
-	if (/^\s*subgraph\s+\S+\s+\S/m.test(block)) {
+	if (
+		/^\s*subgraph\s+"[A-Za-z_][\w-]*\[[^\]\n]+\]"\s*$/m.test(block) ||
+		/^\s*subgraph\s+[A-Za-z_][\w-]*\["[^"\n]+"\]\s*$/m.test(block) ||
+		/^\s*subgraph\s+\S+\s+\S/m.test(block)
+	) {
 		issues.push('subgraph_space');
 	}
 	if (/[[{(][^\]})]*&[^\]})]*[\]})]/.test(block)) {
@@ -46,6 +58,9 @@ export function detectIssues(block: string): IssueKey[] {
 	}
 	if (/^\s*(?:flowchart|graph)\b[\s\S]*\bC4(?:Context|Container|Component|Dynamic|Deployment)\b/.test(block)) {
 		issues.push('c4_keyword');
+	}
+	if (hasSpecialFlowchartEdgeLabel(block)) {
+		issues.push('edge_label_special');
 	}
 
 	return issues;
@@ -164,6 +179,28 @@ export function fixSubgraphTitles(block: string): FixTuple {
 		pattern,
 		(match: string, prefix: string, titleRaw: string) => {
 			const title = titleRaw.trim();
+			const quotedIdTitle = QUOTED_SUBGRAPH_ID_TITLE_REGEX.exec(title);
+			if (quotedIdTitle) {
+				const subgraphId = quotedIdTitle[1];
+				const subgraphTitle = quotedIdTitle[2];
+				if (!subgraphId || subgraphTitle === undefined) {
+					return match;
+				}
+				changes += 1;
+				return `${prefix}${subgraphId} ["${cleanSubgraphTitle(subgraphTitle)}"]`;
+			}
+
+			const compactQuotedIdTitle =
+				COMPACT_QUOTED_SUBGRAPH_ID_TITLE_REGEX.exec(title);
+			if (compactQuotedIdTitle) {
+				const subgraphId = compactQuotedIdTitle[1];
+				const subgraphTitle = compactQuotedIdTitle[2];
+				if (!subgraphId || subgraphTitle === undefined) {
+					return match;
+				}
+				changes += 1;
+				return `${prefix}${subgraphId} ["${cleanSubgraphTitle(subgraphTitle)}"]`;
+			}
 			if (isQuoted(title) || hasSubgraphIdQuotedTitle(title)) {
 				return match;
 			}
@@ -275,42 +312,105 @@ export function fixC4Keywords(block: string): FixTuple {
 	return [fixed, changes];
 }
 
+export function fixFlowchartEdgeLabels(block: string): FixTuple {
+	if (!/^\s*(?:flowchart|graph)\b/m.test(block)) {
+		return [block, 0];
+	}
+
+	let changes = 0;
+	const fixed = block.replace(
+		FLOWCHART_EDGE_LABEL_REGEX,
+		(match: string, labelRaw: string) => {
+			const label = labelRaw.trim();
+			if (!shouldQuoteEdgeLabel(label)) {
+				return match;
+			}
+			changes += 1;
+			const leading = /^\s*/.exec(labelRaw)?.[0] ?? '';
+			const trailing = /\s*$/.exec(labelRaw)?.[0] ?? '';
+			return `|${leading}"${label.replace(/"/g, "'")}"${trailing}|`;
+		},
+	);
+	return [fixed, changes];
+}
+
 export function fixMermaidBlocks(
 	markdown: string,
 	enabledRules?: Partial<EnabledRules>,
 ): FixResult {
 	const logs: string[] = [];
 	let changed = false;
+	let sawFencedBlock = false;
 
 	const text = markdown.replace(
 		MERMAID_REGEX,
-		(match: string, block: string) => {
-			const issues = detectIssues(block);
-			if (issues.length === 0) {
+		(match: string, fence: string, block: string) => {
+			sawFencedBlock = true;
+			const result = fixMermaidBlockContent(
+				normalizeLineEndings(block),
+				enabledRules,
+			);
+			logs.push(...result.logs);
+			if (!result.changed) {
 				return match;
 			}
-
-			let nextBlock = block;
-			for (const issue of issues) {
-				if (!isRuleEnabled(issue, enabledRules)) {
-					continue;
-				}
-				const [fixedBlock, count] = applyIssueFix(issue, nextBlock);
-				nextBlock = fixedBlock;
-				if (count > 0) {
-					logs.push(`${issue} x${count}`);
-				}
-			}
-
-			if (nextBlock !== block) {
-				changed = true;
-				return `\`\`\`mermaid\n${nextBlock}\n\`\`\``;
-			}
-			return match;
+			changed = true;
+			return `${fence}mermaid\n${result.block}\n${fence}`;
 		},
 	);
 
+	if (!sawFencedBlock && isBareMermaidDocument(markdown)) {
+		const result = fixMermaidBlockContent(
+			normalizeLineEndings(markdown.trim()),
+			enabledRules,
+		);
+		return {
+			text: `\`\`\`mermaid\n${result.block}\n\`\`\``,
+			logs: ['bare_mermaid x1', ...result.logs],
+			changed: true,
+		};
+	}
+
 	return { text, logs, changed };
+}
+
+export function hasMermaidFixCandidate(markdown: string): boolean {
+	return MERMAID_FENCE_REGEX.test(markdown) || isBareMermaidDocument(markdown);
+}
+
+export function isBareMermaidDocument(markdown: string): boolean {
+	const trimmed = markdown.trim();
+	return (
+		trimmed.length > 0 &&
+		!MERMAID_FENCE_REGEX.test(markdown) &&
+		BARE_MERMAID_START_REGEX.test(trimmed)
+	);
+}
+
+function fixMermaidBlockContent(
+	block: string,
+	enabledRules?: Partial<EnabledRules>,
+): { block: string; logs: string[]; changed: boolean } {
+	const logs: string[] = [];
+	const issues = detectIssues(block);
+	let nextBlock = block;
+
+	for (const issue of issues) {
+		if (!isRuleEnabled(issue, enabledRules)) {
+			continue;
+		}
+		const [fixedBlock, count] = applyIssueFix(issue, nextBlock);
+		nextBlock = fixedBlock;
+		if (count > 0) {
+			logs.push(`${issue} x${count}`);
+		}
+	}
+
+	return { block: nextBlock, logs, changed: nextBlock !== block };
+}
+
+function normalizeLineEndings(text: string): string {
+	return text.replace(/\r\n?/g, '\n');
 }
 
 function applyIssueFix(issue: IssueKey, block: string): FixTuple {
@@ -333,6 +433,8 @@ function applyIssueFix(issue: IssueKey, block: string): FixTuple {
 			return fixNestedQuotes(block);
 		case 'c4_keyword':
 			return fixC4Keywords(block);
+		case 'edge_label_special':
+			return fixFlowchartEdgeLabels(block);
 	}
 }
 
@@ -353,6 +455,38 @@ function startsWithQuote(text: string): boolean {
 
 function hasSubgraphIdQuotedTitle(title: string): boolean {
 	return /^\S+\s+\[".*"\]$/.test(title);
+}
+
+function cleanSubgraphTitle(title: string): string {
+	let cleaned = title.trim();
+	if (cleaned.startsWith("'") && cleaned.endsWith("'")) {
+		cleaned = cleaned.slice(1, -1).trim();
+	}
+	return cleaned.replace(/"/g, "'");
+}
+
+function hasSpecialFlowchartEdgeLabel(block: string): boolean {
+	if (!/^\s*(?:flowchart|graph)\b/m.test(block)) {
+		return false;
+	}
+
+	FLOWCHART_EDGE_LABEL_REGEX.lastIndex = 0;
+	for (const match of block.matchAll(FLOWCHART_EDGE_LABEL_REGEX)) {
+		const label = match[1]?.trim() ?? '';
+		if (shouldQuoteEdgeLabel(label)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function shouldQuoteEdgeLabel(label: string): boolean {
+	return (
+		label.length > 0 &&
+		!isQuoted(label) &&
+		!startsWithQuote(label) &&
+		/[{}[\]()*]/.test(label)
+	);
 }
 
 function splitLinesLikePython(text: string): string[] {

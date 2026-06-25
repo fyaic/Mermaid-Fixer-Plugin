@@ -43,7 +43,7 @@ For each release, upload these binary attachments:
 - `manifest.json`
 - `styles.css`
 
-The GitHub release tag must match `manifest.json` version exactly. The current release tag is `1.1.3`.
+The GitHub release tag must match `manifest.json` version exactly. The current release tag is `1.1.4`.
 
 Automated releases should generate GitHub artifact attestations for all release assets so users can verify that the downloaded files were built from this repository.
 

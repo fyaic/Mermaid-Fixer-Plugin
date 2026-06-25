@@ -52,6 +52,11 @@ const RULE_SETTINGS: Array<{
 		name: 'Enable C4 keyword fix',
 		desc: 'Avoid C4 keyword misdetection inside flowcharts.',
 	},
+	{
+		key: 'edgeLabelSpecial',
+		name: 'Enable edge label special character fix',
+		desc: 'Quote flowchart edge labels containing syntax-significant characters.',
+	},
 ];
 
 const TABLE_RULE_SETTINGS: Array<{
