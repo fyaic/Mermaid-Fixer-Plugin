@@ -1,10 +1,15 @@
 import { App, Modal, Setting } from 'obsidian';
-import type { PendingFileFix, VaultScanProgress } from './types';
+import type {
+	MermaidSyntaxError,
+	PendingFileFix,
+	VaultScanProgress,
+} from './types';
 
 export class DiffModal extends Modal {
 	private readonly original: string;
 	private readonly fixed: string;
 	private readonly logs: string[];
+	private readonly syntaxErrors: MermaidSyntaxError[];
 	private readonly onApply: () => Promise<void>;
 
 	constructor(
@@ -12,12 +17,14 @@ export class DiffModal extends Modal {
 		original: string,
 		fixed: string,
 		logs: string[],
+		syntaxErrors: MermaidSyntaxError[],
 		onApply: () => Promise<void>,
 	) {
 		super(app);
 		this.original = original;
 		this.fixed = fixed;
 		this.logs = logs;
+		this.syntaxErrors = syntaxErrors;
 		this.onApply = onApply;
 	}
 
@@ -27,11 +34,34 @@ export class DiffModal extends Modal {
 		contentEl.addClass('mermaid-fixer-modal');
 		contentEl.createEl('h2', { text: 'Mermaid fixer - preview changes' });
 		renderLogSummary(contentEl, this.logs);
+		renderSyntaxErrors(contentEl, this.syntaxErrors);
 		renderDiff(contentEl, this.original, this.fixed);
 		renderFooter(contentEl, 'Apply', async () => {
 			await this.onApply();
 			this.close();
 		}, () => this.close());
+	}
+
+	onClose() {
+		this.contentEl.empty();
+	}
+}
+
+export class SyntaxReportModal extends Modal {
+	private readonly syntaxErrors: MermaidSyntaxError[];
+
+	constructor(app: App, syntaxErrors: MermaidSyntaxError[]) {
+		super(app);
+		this.syntaxErrors = syntaxErrors;
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass('mermaid-fixer-modal');
+		contentEl.createEl('h2', { text: 'Mermaid fixer - syntax errors' });
+		renderSyntaxErrors(contentEl, this.syntaxErrors);
+		renderCloseFooter(contentEl, () => this.close());
 	}
 
 	onClose() {
@@ -202,6 +232,27 @@ function renderLogSummary(containerEl: HTMLElement, logs: string[]) {
 	containerEl.createEl('p', { text: `Fixes: ${logs.join(', ')}` });
 }
 
+function renderSyntaxErrors(
+	containerEl: HTMLElement,
+	syntaxErrors: MermaidSyntaxError[],
+) {
+	if (syntaxErrors.length === 0) {
+		return;
+	}
+
+	containerEl.createEl('p', {
+		text: `Mermaid parser still reports ${syntaxErrors.length} error(s).`,
+	});
+	const listEl = containerEl.createEl('ul', {
+		cls: 'mermaid-fixer-syntax-errors',
+	});
+	for (const error of syntaxErrors) {
+		listEl.createEl('li', {
+			text: `Block ${error.blockIndex}: ${error.excerpt} - ${error.message}`,
+		});
+	}
+}
+
 function renderFooter(
 	containerEl: HTMLElement,
 	applyText: string,
@@ -222,6 +273,17 @@ function renderFooter(
 					await onApply();
 				}),
 		);
+}
+
+function renderCloseFooter(containerEl: HTMLElement, onClose: () => void) {
+	new Setting(containerEl).addButton((button) =>
+		button
+			.setButtonText('Close')
+			.setCta()
+			.onClick(() => {
+				onClose();
+			}),
+	);
 }
 
 function countFixes(logs: string[]): number {

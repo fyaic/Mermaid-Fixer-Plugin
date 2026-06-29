@@ -43,7 +43,7 @@ For each release, upload these binary attachments:
 - `manifest.json`
 - `styles.css`
 
-The GitHub release tag must match `manifest.json` version exactly. The current release tag is `1.1.4`.
+The GitHub release tag must match `manifest.json` version exactly. The current release tag is `1.1.5`.
 
 Automated releases should generate GitHub artifact attestations for all release assets so users can verify that the downloaded files were built from this repository.
 
@@ -72,6 +72,7 @@ Also run a manual Obsidian smoke test in a fresh vault:
 - Open the settings tab.
 - Confirm both commands appear in the command palette.
 - Run `Fix current file` on a note with a broken Mermaid block.
+- Run `Fix current file` on a note with an invalid Mermaid block that has no safe automatic repair and confirm the syntax report opens.
 - Run `Fix current file` on a note with a broken Markdown table.
 - Run `Fix whole vault` on a small test vault containing Mermaid-only and table-only issues.
 - Confirm the whole-vault scan progress modal appears before the result summary.

@@ -19,6 +19,7 @@ Open the command palette, choose the current-file or whole-vault repair command,
 | Current-file repair | Repair Mermaid diagrams and Markdown tables in the active note. |
 | Whole-vault repair | Scan Markdown files across the vault for Mermaid and table issues. |
 | Diff preview | Review proposed changes before applying them. |
+| Mermaid parser check | The current-file command validates the repaired note with Obsidian's Mermaid renderer before saying everything is clean. |
 | Scan progress | See whole-vault scan progress before the result summary opens. |
 | Markdown table repair | Repair common broken Markdown table structures conservatively. |
 | Rule toggles | Enable or disable each fix rule independently. |
@@ -41,6 +42,8 @@ When no repair is needed, Mermaid Fixer confirms the clean state with:
 All Mermaid and table are good.
 ```
 
+If the safe fixer rules cannot repair a Mermaid block, the current-file command opens a syntax report instead of claiming the note is clean.
+
 ## Fix rules
 
 Mermaid Fixer targets common syntax problems that often appear in AI-generated or hand-edited diagrams and tables.
@@ -60,6 +63,8 @@ Mermaid Fixer targets common syntax problems that often appear in AI-generated o
 | Nested quotes | Labels or subgraph titles contain nested double quotes. | Replace the inner quotes with safe single quotes. |
 | C4 keywords in flowcharts | `C4Context` / `C4Container` text can trigger Mermaid's C4 parser by mistake. | Rewrite the internal node keywords to flowchart-safe identifiers. |
 | Edge labels with syntax characters | Flowchart edge labels contain `{}`, `[]`, `()`, or `*` without quotes. | Quote the edge label. |
+| XY chart syntax | `xychart-beta` titles, category labels, or labeled series use non-Mermaid syntax. | Quote titles/categories and convert `line [Label] 1, 2` to `line "Label" [1, 2]`. |
+| Missing quadrant chart type | A quadrant chart body starts with `title`, `x-axis`, and `quadrant-*` lines but omits `quadrantChart`. | Insert the missing `quadrantChart` diagram type. |
 
 ### Markdown table rules
 
@@ -78,6 +83,8 @@ Table repair is conservative. Ambiguous rows are left unchanged, and fenced code
 ### Mermaid diagram repair
 
 Mermaid Fixer is aimed at diagrams that are almost valid: an unquoted subgraph title, a label with conflicting brackets, an inline `style` comment, an API route like `{key}` inside an edge label, or flowchart text that accidentally trips Mermaid's C4 parser. The preview shows the exact before/after diff before the note changes.
+
+For Mermaid syntax outside the safe automatic rules, the current-file command now asks Obsidian's Mermaid renderer to parse the repaired note. Remaining parser errors are shown as diagnostics so invalid diagrams do not get reported as clean.
 
 ### Markdown table repair
 
@@ -129,6 +136,8 @@ After the plugin is accepted into the Obsidian Community directory:
 | Enable nested quote fix | Toggle nested double-quote cleanup in Mermaid labels and titles. |
 | Enable C4 keyword fix | Toggle C4 keyword rewrites that prevent flowchart parser misdetection. |
 | Enable edge label special character fix | Toggle quoting for flowchart edge labels with Mermaid-significant characters. |
+| Enable XY chart syntax fix | Toggle `xychart` title/category/series normalization. |
+| Enable quadrant chart type fix | Toggle inserting a missing `quadrantChart` line. |
 | Enable Markdown table fixes | Toggle all Markdown table repair rules. |
 | Fix collapsed one-line tables | Toggle safe collapsed table splitting. |
 | Normalize table separators | Toggle table separator normalization. |

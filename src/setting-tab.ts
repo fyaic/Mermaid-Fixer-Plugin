@@ -57,6 +57,16 @@ const RULE_SETTINGS: Array<{
 		name: 'Enable edge label special character fix',
 		desc: 'Quote flowchart edge labels containing syntax-significant characters.',
 	},
+	{
+		key: 'xychartSyntax',
+		name: 'Enable XY chart syntax fix',
+		desc: 'Quote XY chart titles and normalize labeled line or bar series.',
+	},
+	{
+		key: 'quadrantMissingType',
+		name: 'Enable quadrant chart type fix',
+		desc: 'Insert quadrantChart when a quadrant diagram body is missing its type line.',
+	},
 ];
 
 const TABLE_RULE_SETTINGS: Array<{

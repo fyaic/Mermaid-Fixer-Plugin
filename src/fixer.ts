@@ -4,10 +4,15 @@ export const MERMAID_REGEX = /(`{3,}|~{3,})[ \t]*mermaid[^\r\n]*\r?\n([\s\S]*?)\
 
 const MERMAID_FENCE_REGEX = /(?:`{3,}|~{3,})[ \t]*mermaid\b/i;
 const BARE_MERMAID_START_REGEX =
-	/^(?:(?:flowchart|graph)\s+(?:TB|TD|BT|RL|LR)\b|(?:sequenceDiagram|classDiagram|classDiagram-v2|stateDiagram|stateDiagram-v2|erDiagram|journey|gantt|pie|mindmap|timeline|gitGraph|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b)/i;
+	/^(?:(?:flowchart|graph)\s+(?:TB|TD|BT|RL|LR)\b|(?:sequenceDiagram|classDiagram|classDiagram-v2|stateDiagram|stateDiagram-v2|erDiagram|journey|gantt|pie|mindmap|timeline|gitGraph|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment|quadrantChart|requirementDiagram|xychart(?:-beta)?|sankey-beta|block-beta|packet-beta|architecture-beta|radar-beta|kanban|treemap-beta|info)\b)/i;
 const QUOTED_SUBGRAPH_ID_TITLE_REGEX = /^"([A-Za-z_][\w-]*)\[([^\]\n]+)\]"$/;
 const COMPACT_QUOTED_SUBGRAPH_ID_TITLE_REGEX = /^([A-Za-z_][\w-]*)\["([^"\n]+)"\]$/;
 const FLOWCHART_EDGE_LABEL_REGEX = /\|([^|\r\n]+)\|/g;
+const XYCHART_TITLE_REGEX = /^(\s*title\s+)(.+)$/gm;
+const XYCHART_AXIS_LIST_REGEX = /^(\s*x-axis(?:\s+"[^"\r\n]+")?\s+)\[([^\]\r\n]+)\]\s*$/gm;
+const XYCHART_SERIES_REGEX =
+	/^(\s*(?:line|bar)\s+)\[([^\]\r\n]+)\]\s+([+-]?\d[\d\s.,+-]*)$/gm;
+const QUADRANT_START_REGEX = /^\s*quadrantChart\s*$/im;
 
 const ISSUE_TO_RULE: Record<IssueKey, keyof EnabledRules> = {
 	seq_multiline: 'seqMultiline',
@@ -20,6 +25,8 @@ const ISSUE_TO_RULE: Record<IssueKey, keyof EnabledRules> = {
 	nested_quote: 'nestedQuote',
 	c4_keyword: 'c4Keyword',
 	edge_label_special: 'edgeLabelSpecial',
+	xychart_syntax: 'xychartSyntax',
+	quadrant_missing_type: 'quadrantMissingType',
 };
 
 export function detectIssues(block: string): IssueKey[] {
@@ -51,8 +58,9 @@ export function detectIssues(block: string): IssueKey[] {
 		issues.push('style_comment');
 	}
 	if (
-		/^\s*subgraph\s+"[^"\n]*"[^"\n]*".*$/m.test(block) ||
-		/\[[^\n\]]*"[^\n\]]*"[^\n\]]*"[^\n\]]*\]/.test(block)
+		!isXychartBlock(block) &&
+		(/^\s*subgraph\s+"[^"\n]*"[^"\n]*".*$/m.test(block) ||
+			/\[[^\n\]]*"[^\n\]]*"[^\n\]]*"[^\n\]]*\]/.test(block))
 	) {
 		issues.push('nested_quote');
 	}
@@ -61,6 +69,12 @@ export function detectIssues(block: string): IssueKey[] {
 	}
 	if (hasSpecialFlowchartEdgeLabel(block)) {
 		issues.push('edge_label_special');
+	}
+	if (hasXychartSyntaxIssue(block)) {
+		issues.push('xychart_syntax');
+	}
+	if (hasMissingQuadrantChartType(block)) {
+		issues.push('quadrant_missing_type');
 	}
 
 	return issues;
@@ -334,6 +348,74 @@ export function fixFlowchartEdgeLabels(block: string): FixTuple {
 	return [fixed, changes];
 }
 
+export function fixXychartSyntax(block: string): FixTuple {
+	if (!isXychartBlock(block)) {
+		return [block, 0];
+	}
+
+	let changes = 0;
+	let fixed = block.replace(
+		XYCHART_TITLE_REGEX,
+		(match: string, prefix: string, titleRaw: string) => {
+			const title = titleRaw.trim();
+			if (isQuoted(title) || title.length === 0) {
+				return match;
+			}
+			changes += 1;
+			return `${prefix}"${title.replace(/"/g, "'")}"`;
+		},
+	);
+
+	fixed = fixed.replace(
+		XYCHART_AXIS_LIST_REGEX,
+		(match: string, prefix: string, categoriesRaw: string) => {
+			const categories = categoriesRaw.split(',').map((category) => category.trim());
+			if (
+				categories.length === 0 ||
+				categories.every(
+					(category) => category.length === 0 || !needsXychartCategoryQuotes(category),
+				)
+			) {
+				return match;
+			}
+			changes += 1;
+			const normalized = categories
+				.map((category) =>
+					needsXychartCategoryQuotes(category)
+						? `"${stripWrappingQuotes(category).replace(/"/g, "'")}"`
+						: category,
+				)
+				.join(', ');
+			return `${prefix}[${normalized}]`;
+		},
+	);
+
+	fixed = fixed.replace(
+		XYCHART_SERIES_REGEX,
+		(match: string, prefix: string, labelRaw: string, valuesRaw: string) => {
+			const label = labelRaw.trim();
+			const values = valuesRaw.trim();
+			if (values.length === 0 || label.split(',').length > 1) {
+				return match;
+			}
+			changes += 1;
+			return `${prefix}"${stripWrappingQuotes(label).replace(/"/g, "'")}" [${values}]`;
+		},
+	);
+
+	return [fixed, changes];
+}
+
+export function fixMissingQuadrantChartType(block: string): FixTuple {
+	if (!hasMissingQuadrantChartType(block)) {
+		return [block, 0];
+	}
+
+	const leadingBlankLines = /^(?:[ \t]*\n)*/.exec(block)?.[0] ?? '';
+	const rest = block.slice(leadingBlankLines.length);
+	return [`${leadingBlankLines}quadrantChart\n${rest}`, 1];
+}
+
 export function fixMermaidBlocks(
 	markdown: string,
 	enabledRules?: Partial<EnabledRules>,
@@ -435,6 +517,10 @@ function applyIssueFix(issue: IssueKey, block: string): FixTuple {
 			return fixC4Keywords(block);
 		case 'edge_label_special':
 			return fixFlowchartEdgeLabels(block);
+		case 'xychart_syntax':
+			return fixXychartSyntax(block);
+		case 'quadrant_missing_type':
+			return fixMissingQuadrantChartType(block);
 	}
 }
 
@@ -487,6 +573,83 @@ function shouldQuoteEdgeLabel(label: string): boolean {
 		!startsWithQuote(label) &&
 		/[{}[\]()*]/.test(label)
 	);
+}
+
+function hasXychartSyntaxIssue(block: string): boolean {
+	XYCHART_SERIES_REGEX.lastIndex = 0;
+	return (
+		isXychartBlock(block) &&
+		(hasUnquotedXychartTitle(block) ||
+			hasUnquotedXychartCategory(block) ||
+			XYCHART_SERIES_REGEX.test(block))
+	);
+}
+
+function hasUnquotedXychartTitle(block: string): boolean {
+	const titleRegex = /^(\s*title\s+)(.+)$/gm;
+	for (const match of block.matchAll(titleRegex)) {
+		const title = match[2]?.trim() ?? '';
+		if (title.length > 0 && !isQuoted(title)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function hasUnquotedXychartCategory(block: string): boolean {
+	const axisRegex = /^(\s*x-axis(?:\s+"[^"\r\n]+")?\s+)\[([^\]\r\n]+)\]\s*$/gm;
+	for (const match of block.matchAll(axisRegex)) {
+		const categories = match[2]?.split(',').map((category) => category.trim()) ?? [];
+		if (categories.some((category) => needsXychartCategoryQuotes(category))) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function hasMissingQuadrantChartType(block: string): boolean {
+	return (
+		!QUADRANT_START_REGEX.test(block) &&
+		/^\s*title\s+.+$/im.test(block) &&
+		/^\s*x-axis\s+.+\s+-->\s+.+$/im.test(block) &&
+		/^\s*y-axis\s+.+\s+-->\s+.+$/im.test(block) &&
+		/^\s*quadrant-[1-4]\s+.+$/im.test(block)
+	);
+}
+
+function needsXychartCategoryQuotes(category: string): boolean {
+	return (
+		category.length > 0 &&
+		!isQuoted(category) &&
+		!startsWithQuote(category) &&
+		/\s/.test(category)
+	);
+}
+
+function isXychartBlock(block: string): boolean {
+	return /^xychart(?:-beta)?(?:\s+(?:horizontal|vertical))?$/i.test(
+		firstMeaningfulLine(block),
+	);
+}
+
+function firstMeaningfulLine(block: string): string {
+	return (
+		block
+			.split(/\r?\n/)
+			.map((line) => line.trim())
+			.find((line) => line.length > 0 && !line.startsWith('%%')) ?? ''
+	);
+}
+
+function stripWrappingQuotes(text: string): string {
+	const trimmed = text.trim();
+	if (
+		(trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+		(trimmed.startsWith("'") && trimmed.endsWith("'"))
+	) {
+		return trimmed.slice(1, -1);
+	}
+	return trimmed;
 }
 
 function splitLinesLikePython(text: string): string[] {

@@ -11,6 +11,8 @@ export const ISSUE_KEYS = [
 	'nested_quote',
 	'c4_keyword',
 	'edge_label_special',
+	'xychart_syntax',
+	'quadrant_missing_type',
 ] as const;
 
 export type IssueKey = (typeof ISSUE_KEYS)[number];
@@ -26,6 +28,8 @@ export interface EnabledRules {
 	nestedQuote: boolean;
 	c4Keyword: boolean;
 	edgeLabelSpecial: boolean;
+	xychartSyntax: boolean;
+	quadrantMissingType: boolean;
 }
 
 export interface TableRules {
@@ -50,6 +54,12 @@ export interface FixResult {
 	text: string;
 	logs: string[];
 	changed: boolean;
+}
+
+export interface MermaidSyntaxError {
+	blockIndex: number;
+	message: string;
+	excerpt: string;
 }
 
 export interface PendingFileFix {

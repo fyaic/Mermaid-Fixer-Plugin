@@ -19,6 +19,8 @@ export const DEFAULT_SETTINGS: MermaidFixerSettings = {
 		nestedQuote: true,
 		c4Keyword: true,
 		edgeLabelSpecial: true,
+		xychartSyntax: true,
+		quadrantMissingType: true,
 	},
 	tableRules: {
 		enabled: true,

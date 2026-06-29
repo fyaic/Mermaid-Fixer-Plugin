@@ -59,3 +59,24 @@
 	color: var(--text-muted);
 	overflow-wrap: anywhere;
 }
+
+.mermaid-fixer-syntax-errors {
+	max-height: 35vh;
+	overflow: auto;
+	padding-inline-start: 24px;
+}
+
+.mermaid-fixer-syntax-errors li {
+	margin-block: 6px;
+	overflow-wrap: anywhere;
+}
+
+.mermaid-fixer-render-probe {
+	position: fixed;
+	inset: auto auto 0 0;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	opacity: 0;
+	pointer-events: none;
+}

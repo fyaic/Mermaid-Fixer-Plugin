@@ -4,6 +4,7 @@ import {
 	fixFlowchartDiamondGt,
 	fixC4Keywords,
 	fixFlowchartEdgeLabels,
+	fixMissingQuadrantChartType,
 	hasMermaidFixCandidate,
 	fixMermaidBlocks,
 	fixNestedQuotes,
@@ -13,10 +14,11 @@ import {
 	fixStyleComments,
 	fixSubgraphTitles,
 	fixUnquotedAmpersand,
+	fixXychartSyntax,
 } from '../src/fixer';
 
 describe('detectIssues', () => {
-	it('detects all supported issue keys', () => {
+	it('detects supported mixed flowchart and UML issue keys', () => {
 		const block = [
 			'flowchart LR',
 			'Types --> C4Context[C4Context / C4Container]',
@@ -50,6 +52,46 @@ describe('detectIssues', () => {
 			'c4_keyword',
 			'edge_label_special',
 		]);
+	});
+
+	it('recognizes current Mermaid diagram starters as bare documents', () => {
+		const starters = [
+			'flowchart TD',
+			'graph LR',
+			'sequenceDiagram',
+			'classDiagram',
+			'classDiagram-v2',
+			'stateDiagram',
+			'stateDiagram-v2',
+			'erDiagram',
+			'journey',
+			'gantt',
+			'pie',
+			'mindmap',
+			'timeline',
+			'gitGraph',
+			'C4Context',
+			'C4Container',
+			'C4Component',
+			'C4Dynamic',
+			'C4Deployment',
+			'quadrantChart',
+			'requirementDiagram',
+			'xychart',
+			'xychart-beta',
+			'sankey-beta',
+			'block-beta',
+			'packet-beta',
+			'architecture-beta',
+			'radar-beta',
+			'kanban',
+			'treemap-beta',
+			'info',
+		];
+
+		for (const starter of starters) {
+			expect(hasMermaidFixCandidate(`${starter}\n`)).toBe(true);
+		}
 	});
 });
 
@@ -218,6 +260,57 @@ describe('individual fixes', () => {
 			1,
 		]);
 	});
+
+	it('normalizes XY chart syntax to Mermaid 11 form', () => {
+		const input = [
+			'xychart-beta',
+			'    title 计算资源增长计划 vs 实际需求',
+			'    x-axis [2026 Q1, 2026 Q2, 2026 Q3, 2026 Q4]',
+			'    y-axis "资源倍数 (对数刻度)" 1 --> 100',
+			'    line [理性规划 10倍/年] 1.78, 3.16, 5.62, 10',
+			'    line [实际需求 3倍/季] 3, 9, 27, 81',
+			'    line [供需缺口] 1.22, 5.84, 21.38, 71',
+		].join('\n');
+
+		expect(detectIssues(input)).toContain('xychart_syntax');
+		expect(fixXychartSyntax(input)).toEqual([
+			[
+				'xychart-beta',
+				'    title "计算资源增长计划 vs 实际需求"',
+				'    x-axis ["2026 Q1", "2026 Q2", "2026 Q3", "2026 Q4"]',
+				'    y-axis "资源倍数 (对数刻度)" 1 --> 100',
+				'    line "理性规划 10倍/年" [1.78, 3.16, 5.62, 10]',
+				'    line "实际需求 3倍/季" [3, 9, 27, 81]',
+				'    line "供需缺口" [1.22, 5.84, 21.38, 71]',
+			].join('\n'),
+			5,
+		]);
+	});
+
+	it('inserts missing quadrantChart diagram type', () => {
+		const input = [
+			'',
+			'    title 军事合作伦理决策框架',
+			'    x-axis 低防御价值 --> 高防御价值',
+			'    y-axis 低伦理风险 --> 高伦理风险',
+			'    quadrant-1 有条件合作区',
+			'    quadrant-2 拒绝合作区',
+		].join('\n');
+
+		expect(detectIssues(input)).toContain('quadrant_missing_type');
+		expect(fixMissingQuadrantChartType(input)).toEqual([
+			[
+				'',
+				'quadrantChart',
+				'    title 军事合作伦理决策框架',
+				'    x-axis 低防御价值 --> 高防御价值',
+				'    y-axis 低伦理风险 --> 高伦理风险',
+				'    quadrant-1 有条件合作区',
+				'    quadrant-2 拒绝合作区',
+			].join('\n'),
+			1,
+		]);
+	});
 });
 
 describe('fixMermaidBlocks', () => {
@@ -333,6 +426,41 @@ describe('fixMermaidBlocks', () => {
 			'nested_quote x2',
 			'c4_keyword x3',
 		]);
+		expect(second).toEqual({
+			text: first.text,
+			logs: [],
+			changed: false,
+		});
+	});
+
+	it('fixes Anthropic interview XY and quadrant regressions idempotently', () => {
+		const input = [
+			'```mermaid',
+			'xychart-beta',
+			'    title 计算资源增长计划 vs 实际需求',
+			'    x-axis [2026 Q1, 2026 Q2, 2026 Q3, 2026 Q4]',
+			'    y-axis "资源倍数 (对数刻度)" 1 --> 100',
+			'    line [理性规划 10倍/年] 1.78, 3.16, 5.62, 10',
+			'    line [实际需求 3倍/季] 3, 9, 27, 81',
+			'    line [供需缺口] 1.22, 5.84, 21.38, 71',
+			'```',
+			'```mermaid',
+			'',
+			'    title 军事合作伦理决策框架',
+			'    x-axis 低防御价值 --> 高防御价值',
+			'    y-axis 低伦理风险 --> 高伦理风险',
+			'    quadrant-1 有条件合作区',
+			'    quadrant-2 拒绝合作区',
+			'```',
+		].join('\n');
+
+		const first = fixMermaidBlocks(input);
+		const second = fixMermaidBlocks(first.text);
+
+		expect(first.logs).toEqual(['xychart_syntax x5', 'quadrant_missing_type x1']);
+		expect(first.text).toContain('title "计算资源增长计划 vs 实际需求"');
+		expect(first.text).toContain('line "理性规划 10倍/年" [1.78, 3.16, 5.62, 10]');
+		expect(first.text).toContain('quadrantChart');
 		expect(second).toEqual({
 			text: first.text,
 			logs: [],

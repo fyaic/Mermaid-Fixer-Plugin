@@ -2,10 +2,12 @@ import { Notice } from 'obsidian';
 import { fixMarkdownContent } from './content-fixer';
 import {
 	DiffModal,
+	SyntaxReportModal,
 	VaultScanProgressModal,
 	VaultSummaryModal,
 } from './diff-modal';
 import type MermaidFixerPlugin from './main';
+import { validateMermaidSyntax } from './mermaid-validator';
 import type { PendingFileFix } from './types';
 import { scanVaultForFixes } from './vault-scanner';
 
@@ -13,20 +15,34 @@ export function registerCommands(plugin: MermaidFixerPlugin) {
 	plugin.addCommand({
 		id: 'fix-current-file',
 		name: 'Fix current file',
-		editorCallback: async (editor) => {
+		editorCallback: async (editor, view) => {
 			const original = editor.getValue();
 			const result = fixMarkdownContent(original, plugin.settings);
+			const syntaxErrors = await validateMermaidSyntax(
+				plugin.app,
+				result.text,
+				view.file?.path ?? '',
+			);
 
 			if (!result.changed) {
+				if (syntaxErrors.length > 0) {
+					new SyntaxReportModal(plugin.app, syntaxErrors).open();
+					return;
+				}
 				new Notice('All Mermaid and table are good.');
 				return;
 			}
 
 			const applyFix = async () => {
 				editor.setValue(result.text);
-				new Notice(
-					`Fixed ${countFixes(result.logs)} Markdown issue(s) in current file.`,
-				);
+				const fixedCount = countFixes(result.logs);
+				if (syntaxErrors.length > 0) {
+					new Notice(
+						`Fixed ${fixedCount} issue(s); ${syntaxErrors.length} Mermaid syntax error(s) remain.`,
+					);
+					return;
+				}
+				new Notice(`Fixed ${fixedCount} Markdown issue(s) in current file.`);
 			};
 
 			if (plugin.settings.showDiffBeforeApply) {
@@ -35,6 +51,7 @@ export function registerCommands(plugin: MermaidFixerPlugin) {
 					original,
 					result.text,
 					result.logs,
+					syntaxErrors,
 					applyFix,
 				).open();
 			} else {
