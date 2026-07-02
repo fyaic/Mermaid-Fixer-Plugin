@@ -22,6 +22,7 @@ const ISSUE_TO_RULE: Record<IssueKey, keyof EnabledRules> = {
 	subgraph_space: 'subgraphSpace',
 	unquoted_amp: 'unquotedAmp',
 	style_comment: 'styleComment',
+	single_percent_comment: 'singlePercentComment',
 	nested_quote: 'nestedQuote',
 	c4_keyword: 'c4Keyword',
 	edge_label_special: 'edgeLabelSpecial',
@@ -56,6 +57,9 @@ export function detectIssues(block: string): IssueKey[] {
 	}
 	if (/^\s*style\s+\S+\s+\S.*?[ \t]+%%.*$/m.test(block)) {
 		issues.push('style_comment');
+	}
+	if (/^\s*%(?!%|\{)[^\r\n]*$/m.test(block)) {
+		issues.push('single_percent_comment');
 	}
 	if (
 		!isXychartBlock(block) &&
@@ -259,6 +263,19 @@ export function fixStyleComments(block: string): FixTuple {
 			changes += 1;
 			const indent = /^\s*/.exec(styleLine)?.[0] ?? '';
 			return `${styleLine.trimEnd()}\n${indent}${comment.trimStart()}`;
+		},
+	);
+	return [fixed, changes];
+}
+
+export function fixSinglePercentComments(block: string): FixTuple {
+	const pattern = /^(\s*)%(?!%|\{)([^\r\n]*)$/gm;
+	let changes = 0;
+	const fixed = block.replace(
+		pattern,
+		(match: string, indent: string, commentText: string) => {
+			changes += 1;
+			return `${indent}%%${commentText}`;
 		},
 	);
 	return [fixed, changes];
@@ -511,6 +528,8 @@ function applyIssueFix(issue: IssueKey, block: string): FixTuple {
 			return fixUnquotedAmpersand(block);
 		case 'style_comment':
 			return fixStyleComments(block);
+		case 'single_percent_comment':
+			return fixSinglePercentComments(block);
 		case 'nested_quote':
 			return fixNestedQuotes(block);
 		case 'c4_keyword':

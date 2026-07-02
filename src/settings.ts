@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS: MermaidFixerSettings = {
 		subgraphSpace: true,
 		unquotedAmp: true,
 		styleComment: true,
+		singlePercentComment: true,
 		nestedQuote: true,
 		c4Keyword: true,
 		edgeLabelSpecial: true,

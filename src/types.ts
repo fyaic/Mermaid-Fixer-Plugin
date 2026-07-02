@@ -8,6 +8,7 @@ export const ISSUE_KEYS = [
 	'subgraph_space',
 	'unquoted_amp',
 	'style_comment',
+	'single_percent_comment',
 	'nested_quote',
 	'c4_keyword',
 	'edge_label_special',
@@ -25,6 +26,7 @@ export interface EnabledRules {
 	subgraphSpace: boolean;
 	unquotedAmp: boolean;
 	styleComment: boolean;
+	singlePercentComment: boolean;
 	nestedQuote: boolean;
 	c4Keyword: boolean;
 	edgeLabelSpecial: boolean;

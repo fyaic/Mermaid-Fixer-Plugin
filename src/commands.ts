@@ -1,4 +1,4 @@
-import { Notice } from 'obsidian';
+import { MarkdownView, Notice } from 'obsidian';
 import { fixMarkdownContent } from './content-fixer';
 import {
 	DiffModal,
@@ -15,7 +15,14 @@ export function registerCommands(plugin: MermaidFixerPlugin) {
 	plugin.addCommand({
 		id: 'fix-current-file',
 		name: 'Fix current file',
-		editorCallback: async (editor, view) => {
+		callback: async () => {
+			const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+			const editor = view?.editor;
+			if (!editor) {
+				new Notice('Open a Markdown file in edit mode before running Mermaid fixer.');
+				return;
+			}
+
 			const original = editor.getValue();
 			const result = fixMarkdownContent(original, plugin.settings);
 			const syntaxErrors = await validateMermaidSyntax(

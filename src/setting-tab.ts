@@ -43,6 +43,11 @@ const RULE_SETTINGS: Array<{
 		desc: 'Move inline comments off Mermaid style lines.',
 	},
 	{
+		key: 'singlePercentComment',
+		name: 'Enable single percent comment fix',
+		desc: 'Convert Mermaid lines starting with a single % into %% comments.',
+	},
+	{
 		key: 'nestedQuote',
 		name: 'Enable nested quote fix',
 		desc: 'Replace nested double quotes inside Mermaid titles and labels.',

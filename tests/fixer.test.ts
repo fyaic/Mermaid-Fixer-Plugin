@@ -10,6 +10,7 @@ import {
 	fixNestedQuotes,
 	fixNodeTextParens,
 	fixSequenceMultiline,
+	fixSinglePercentComments,
 	fixStateLabels,
 	fixStyleComments,
 	fixSubgraphTitles,
@@ -34,6 +35,7 @@ describe('detectIssues', () => {
 			'B[Hello (world)] --> C',
 			'C[Tom & Jerry] --> D',
 			'style D fill:#fff,stroke:#333  %% white',
+			'% invalid single-percent comment',
 			'E["bad "quote" label"] --> F',
 			'subgraph My Group',
 			'D-->E',
@@ -48,6 +50,7 @@ describe('detectIssues', () => {
 			'subgraph_space',
 			'unquoted_amp',
 			'style_comment',
+			'single_percent_comment',
 			'nested_quote',
 			'c4_keyword',
 			'edge_label_special',
@@ -211,6 +214,28 @@ describe('individual fixes', () => {
 		expect(fixStyleComments(input)).toEqual([
 			'graph TD\nstyle A fill:#fff,stroke:#333\n%% white\nstyle B fill:#eee,stroke:#333\n%% gray',
 			2,
+		]);
+	});
+
+	it('converts single percent Mermaid comment lines', () => {
+		const input = [
+			'flowchart LR',
+			'% broken comment',
+			'%% already valid',
+			'%%{init: {"theme":"base"}}%%',
+			'A-->B',
+		].join('\n');
+
+		expect(detectIssues(input)).toContain('single_percent_comment');
+		expect(fixSinglePercentComments(input)).toEqual([
+			[
+				'flowchart LR',
+				'%% broken comment',
+				'%% already valid',
+				'%%{init: {"theme":"base"}}%%',
+				'A-->B',
+			].join('\n'),
+			1,
 		]);
 	});
 
