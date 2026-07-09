@@ -9,6 +9,7 @@ import {
 	fixMermaidBlocks,
 	fixNestedQuotes,
 	fixNodeTextParens,
+	fixQuadrantText,
 	fixSequenceMultiline,
 	fixSinglePercentComments,
 	fixStateLabels,
@@ -336,6 +337,36 @@ describe('individual fixes', () => {
 			1,
 		]);
 	});
+
+	it('quotes quadrant chart text labels Mermaid cannot parse', () => {
+		const input = [
+			'quadrantChart',
+			'    title AI行业信任分层与"向顶赛跑"机制',
+			'    x-axis 低协作意愿 --> 高协作意愿',
+			'    y-axis 低可信度 --> 高可信度',
+			'    quadrant-1 可信赖领导者',
+			'    quadrant-2 潜在合作伙伴',
+			'    quadrant-3 高风险行为者',
+			'    quadrant-4 需施压对象',
+			'    Anthropic: [0.78, 0.82]',
+		].join('\n');
+
+		expect(detectIssues(input)).toContain('quadrant_text');
+		expect(fixQuadrantText(input)).toEqual([
+			[
+				'quadrantChart',
+				"    title AI行业信任分层与'向顶赛跑'机制",
+				'    x-axis "低协作意愿" --> "高协作意愿"',
+				'    y-axis "低可信度" --> "高可信度"',
+				'    quadrant-1 "可信赖领导者"',
+				'    quadrant-2 "潜在合作伙伴"',
+				'    quadrant-3 "高风险行为者"',
+				'    quadrant-4 "需施压对象"',
+				'    Anthropic: [0.78, 0.82]',
+			].join('\n'),
+			7,
+		]);
+	});
 });
 
 describe('fixMermaidBlocks', () => {
@@ -470,7 +501,7 @@ describe('fixMermaidBlocks', () => {
 			'    line [供需缺口] 1.22, 5.84, 21.38, 71',
 			'```',
 			'```mermaid',
-			'',
+			'quadrantChart',
 			'    title 军事合作伦理决策框架',
 			'    x-axis 低防御价值 --> 高防御价值',
 			'    y-axis 低伦理风险 --> 高伦理风险',
@@ -482,10 +513,11 @@ describe('fixMermaidBlocks', () => {
 		const first = fixMermaidBlocks(input);
 		const second = fixMermaidBlocks(first.text);
 
-		expect(first.logs).toEqual(['xychart_syntax x5', 'quadrant_missing_type x1']);
+		expect(first.logs).toEqual(['xychart_syntax x5', 'quadrant_text x4']);
 		expect(first.text).toContain('title "计算资源增长计划 vs 实际需求"');
 		expect(first.text).toContain('line "理性规划 10倍/年" [1.78, 3.16, 5.62, 10]');
-		expect(first.text).toContain('quadrantChart');
+		expect(first.text).toContain('x-axis "低防御价值" --> "高防御价值"');
+		expect(first.text).toContain('quadrant-1 "有条件合作区"');
 		expect(second).toEqual({
 			text: first.text,
 			logs: [],

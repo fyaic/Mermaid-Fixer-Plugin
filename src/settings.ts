@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS: MermaidFixerSettings = {
 		edgeLabelSpecial: true,
 		xychartSyntax: true,
 		quadrantMissingType: true,
+		quadrantText: true,
 	},
 	tableRules: {
 		enabled: true,

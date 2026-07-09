@@ -72,6 +72,11 @@ const RULE_SETTINGS: Array<{
 		name: 'Enable quadrant chart type fix',
 		desc: 'Insert quadrantChart when a quadrant diagram body is missing its type line.',
 	},
+	{
+		key: 'quadrantText',
+		name: 'Enable quadrant chart text fix',
+		desc: 'Quote quadrant chart axis and quadrant labels when Mermaid cannot parse them.',
+	},
 ];
 
 const TABLE_RULE_SETTINGS: Array<{

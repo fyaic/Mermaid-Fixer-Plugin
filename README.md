@@ -65,6 +65,7 @@ Mermaid Fixer targets common syntax problems that often appear in AI-generated o
 | Edge labels with syntax characters | Flowchart edge labels contain `{}`, `[]`, `()`, or `*` without quotes. | Quote the edge label. |
 | XY chart syntax | `xychart-beta` titles, category labels, or labeled series use non-Mermaid syntax. | Quote titles/categories and convert `line [Label] 1, 2` to `line "Label" [1, 2]`. |
 | Missing quadrant chart type | A quadrant chart body starts with `title`, `x-axis`, and `quadrant-*` lines but omits `quadrantChart`. | Insert the missing `quadrantChart` diagram type. |
+| Quadrant chart text | `quadrantChart` axis or quadrant labels contain Chinese/non-ASCII text without quotes, or a title contains nested double quotes. | Quote axis/quadrant labels and make nested title quotes Mermaid-safe. |
 
 ### Markdown table rules
 

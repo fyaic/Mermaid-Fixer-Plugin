@@ -28,6 +28,7 @@ const ISSUE_TO_RULE: Record<IssueKey, keyof EnabledRules> = {
 	edge_label_special: 'edgeLabelSpecial',
 	xychart_syntax: 'xychartSyntax',
 	quadrant_missing_type: 'quadrantMissingType',
+	quadrant_text: 'quadrantText',
 };
 
 export function detectIssues(block: string): IssueKey[] {
@@ -79,6 +80,9 @@ export function detectIssues(block: string): IssueKey[] {
 	}
 	if (hasMissingQuadrantChartType(block)) {
 		issues.push('quadrant_missing_type');
+	}
+	if (hasQuadrantTextIssue(block)) {
+		issues.push('quadrant_text');
 	}
 
 	return issues;
@@ -433,6 +437,51 @@ export function fixMissingQuadrantChartType(block: string): FixTuple {
 	return [`${leadingBlankLines}quadrantChart\n${rest}`, 1];
 }
 
+export function fixQuadrantText(block: string): FixTuple {
+	if (!isQuadrantChartBlock(block)) {
+		return [block, 0];
+	}
+
+	let changes = 0;
+	let fixed = block.replace(
+		/^(\s*title\s+)(.+)$/gm,
+		(match: string, prefix: string, titleRaw: string) => {
+			if (!titleRaw.includes('"')) {
+				return match;
+			}
+			changes += 1;
+			return `${prefix}${titleRaw.replace(/"/g, "'")}`;
+		},
+	);
+
+	fixed = fixed.replace(
+		/^(\s*[xy]-axis\s+)(.+?)\s+-->\s+(.+?)\s*$/gm,
+		(match: string, prefix: string, leftRaw: string, rightRaw: string) => {
+			const left = leftRaw.trim();
+			const right = rightRaw.trim();
+			if (!needsQuadrantTextQuotes(left) && !needsQuadrantTextQuotes(right)) {
+				return match;
+			}
+			changes += 1;
+			return `${prefix}${quoteQuadrantText(left)} --> ${quoteQuadrantText(right)}`;
+		},
+	);
+
+	fixed = fixed.replace(
+		/^(\s*quadrant-[1-4]\s+)(.+?)\s*$/gm,
+		(match: string, prefix: string, labelRaw: string) => {
+			const label = labelRaw.trim();
+			if (!needsQuadrantTextQuotes(label)) {
+				return match;
+			}
+			changes += 1;
+			return `${prefix}${quoteQuadrantText(label)}`;
+		},
+	);
+
+	return [fixed, changes];
+}
+
 export function fixMermaidBlocks(
 	markdown: string,
 	enabledRules?: Partial<EnabledRules>,
@@ -540,6 +589,8 @@ function applyIssueFix(issue: IssueKey, block: string): FixTuple {
 			return fixXychartSyntax(block);
 		case 'quadrant_missing_type':
 			return fixMissingQuadrantChartType(block);
+		case 'quadrant_text':
+			return fixQuadrantText(block);
 	}
 }
 
@@ -636,6 +687,48 @@ function hasMissingQuadrantChartType(block: string): boolean {
 	);
 }
 
+function hasQuadrantTextIssue(block: string): boolean {
+	if (!isQuadrantChartBlock(block)) {
+		return false;
+	}
+
+	if (/^\s*title\s+.*".*$/m.test(block)) {
+		return true;
+	}
+
+	for (const match of block.matchAll(/^\s*[xy]-axis\s+(.+?)\s+-->\s+(.+?)\s*$/gm)) {
+		const left = match[1]?.trim() ?? '';
+		const right = match[2]?.trim() ?? '';
+		if (needsQuadrantTextQuotes(left) || needsQuadrantTextQuotes(right)) {
+			return true;
+		}
+	}
+
+	for (const match of block.matchAll(/^\s*quadrant-[1-4]\s+(.+?)\s*$/gm)) {
+		const label = match[1]?.trim() ?? '';
+		if (needsQuadrantTextQuotes(label)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function needsQuadrantTextQuotes(text: string): boolean {
+	return (
+		text.length > 0 &&
+		!isQuoted(text) &&
+		Array.from(text).some((char) => char === '"' || char.charCodeAt(0) > 127)
+	);
+}
+
+function quoteQuadrantText(text: string): string {
+	if (!needsQuadrantTextQuotes(text)) {
+		return text;
+	}
+	return `"${stripWrappingQuotes(text).replace(/"/g, "'")}"`;
+}
+
 function needsXychartCategoryQuotes(category: string): boolean {
 	return (
 		category.length > 0 &&
@@ -649,6 +742,10 @@ function isXychartBlock(block: string): boolean {
 	return /^xychart(?:-beta)?(?:\s+(?:horizontal|vertical))?$/i.test(
 		firstMeaningfulLine(block),
 	);
+}
+
+function isQuadrantChartBlock(block: string): boolean {
+	return /^quadrantChart$/i.test(firstMeaningfulLine(block));
 }
 
 function firstMeaningfulLine(block: string): string {

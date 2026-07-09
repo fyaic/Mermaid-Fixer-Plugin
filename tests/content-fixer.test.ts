@@ -104,6 +104,7 @@ describe('fixMarkdownContent', () => {
 		expect(settings.enabledRules.seqMultiline).toBe(true);
 		expect(settings.enabledRules.xychartSyntax).toBe(true);
 		expect(settings.enabledRules.quadrantMissingType).toBe(true);
+		expect(settings.enabledRules.quadrantText).toBe(true);
 		expect(settings.enabledRules.singlePercentComment).toBe(true);
 		expect(settings.tableRules.enabled).toBe(true);
 		expect(settings.tableRules.collapsedTables).toBe(true);

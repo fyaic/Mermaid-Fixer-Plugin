@@ -14,6 +14,7 @@ export const ISSUE_KEYS = [
 	'edge_label_special',
 	'xychart_syntax',
 	'quadrant_missing_type',
+	'quadrant_text',
 ] as const;
 
 export type IssueKey = (typeof ISSUE_KEYS)[number];
@@ -32,6 +33,7 @@ export interface EnabledRules {
 	edgeLabelSpecial: boolean;
 	xychartSyntax: boolean;
 	quadrantMissingType: boolean;
+	quadrantText: boolean;
 }
 
 export interface TableRules {
