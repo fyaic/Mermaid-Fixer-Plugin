@@ -1,5 +1,7 @@
 # Mermaid Fixer
 
+![Mermaid Fixer turns a Mermaid syntax error into a rendered flowchart](docs/images/mermaid-fixer-cover.png)
+
 Repair Mermaid diagrams and Markdown tables in Obsidian notes before they break preview, export, or publishing.
 
 Mermaid Fixer is free, local-only, and does not make network requests.
@@ -25,6 +27,10 @@ Open the command palette, choose the current-file or whole-vault repair command,
 | Rule toggles | Enable or disable each fix rule independently. |
 | Local-first | No accounts, API keys, network requests, telemetry, or hosted service. |
 | Free release | No paid features, subscriptions, donations, or external paid services. |
+
+## Repair coverage
+
+![Mermaid Fixer repair coverage across flowcharts, edge labels, subgraphs, XY charts, quadrants, and sequence diagrams](docs/images/repair-capabilities.png)
 
 ## Usage
 
