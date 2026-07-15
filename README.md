@@ -32,6 +32,14 @@ Open the command palette, choose the current-file or whole-vault repair command,
 
 ![Mermaid Fixer repair coverage across flowcharts, edge labels, subgraphs, XY charts, quadrants, and sequence diagrams](docs/images/repair-capabilities.png)
 
+## Companion renderer
+
+Mermaid Fixer repairs Mermaid source syntax before preview. Some diagrams, however, are already valid in newer Mermaid versions but fail because Obsidian's built-in renderer may lag behind the latest Mermaid release. In those cases, changing the renderer can be better than rewriting the diagram.
+
+Syntax broken? Try [Mermaid Fixer - Obsidian Plugin](https://community.obsidian.md/plugins/mermaid-fixer).
+
+Layout fails, ELK is needed, or stock Obsidian's Mermaid is too old? Try [Mermaid ELK Renderer - Obsidian Plugin](https://community.obsidian.md/plugins/mermaid-elk-renderer) with bundled Mermaid 11 enabled.
+
 ## Usage
 
 Search for **Mermaid Fixer** in the command palette. The plugin provides one command for the active note and one for a vault-wide scan.
